@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星图共振 · 多标签页同步星座</title>
+<style>
+:root {
+  --bg: #0a0e17;
+  --bg-elevated: #111827;
+  --fg: #e8edf5;
+  --muted: #6b7a99;
+  --accent: #7dd3fc;
+  --accent-dim: #38bdf8;
+  --star-core: #fff;
+  --star-glow: #7dd3fc;
+  --line: #2d4a6b;
+  --line-active: #7dd3fc;
+  --card: #161f33;
+  --border: #2a3a52;
+  --shadow: rgba(0,0,0,0.4);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f0f4f8;
+    --bg-elevated: #ffffff;
+    --fg: #1e293b;
+    --muted: #64748b;
+    --accent: #0369a1;
+    --accent-dim: #0284c7;
+    --star-core: #0369a1;
+    --star-glow: #38bdf8;
+    --line: #bae6fd;
+    --line-active: #0369a1;
+    --card: #ffffff;
+    --border: #dbeafe;
+    --shadow: rgba(3,105,161,0.15);
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+}
+canvas { display: block; flex: 1; width: 100%; height: 100%; cursor: crosshair; }
+header {
+  padding: 14px 20px;
+  background: linear-gradient(180deg, var(--bg-elevated), transparent);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  z-index: 10;
+}
+h1 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h1 .badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.3s;
+}
+.status-dot.connected { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.status-dot.syncing { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+button:hover { border-color: var(--accent); background: var(--bg); }
+button:active { transform: scale(0.98); }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+button.primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.tab-count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
+footer {
+  padding: 10px 20px;
+  background: linear-gradient(0deg, var(--bg-elevated), transparent);
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+footer kbd {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 10px 18px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px var(--shadow);
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+  pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.name-dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.name-dialog.show { opacity: 1; pointer-events: auto; }
+.name-dialog .panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 360px;
+  box-shadow: 0 20px 60px var(--shadow);
+  transform: scale(0.95);
+  transition: transform 0.2s;
+}
+.name-dialog.show .panel { transform: scale(1); }
+.name-dialog h2 { margin-bottom: 16px; font-size: 1.1rem; }
+.name-dialog input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--fg);
+  font-size: 0.95rem;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 16px;
+}
+.name-dialog input:focus { border-color: var(--accent); }
+.name-dialog .actions { display: flex; gap: 10px; justify-content: flex-end; }
+@media (max-width: 520px) {
+  header { padding: 10px 14px; }
+  h1 { font-size: 1rem; }
+  footer { padding: 8px 14px; font-size: 0.7rem; }
+  .name-dialog .panel { padding: 20px; margin: 16px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>星图共振 <span class="badge">BroadcastChannel</span></h1>
+  <div class="status">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">正在连接…</span>
+    <span class="tab-count" id="tabCount">1</span> 个标签页
+  </div>
+  <div class="controls">
+    <button id="btnClear" title="清空当前标签页视图（不影响其他标签）">清空视图</button>
+    <button id="btnReset" class="primary" title="重置全网星图（需确认）">重置星图</button>
+  </div>
+</header>
+<canvas id="canvas"></canvas>
+<footer>
+  <span>点击画布添加星星 · 点击星星命名 · 附近星星自动连线成座 · 所有标签页实时共享</span>
+  <span><kbd>Esc</kbd> 关闭命名 · <kbd>Enter</kbd> 确认</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+<div class="name-dialog" id="nameDialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+  <div class="panel">
+    <h2 id="dialogTitle">为这颗星星命名</h2>
+    <input type="text" id="nameInput" maxlength="18" placeholder="输入名字（最多 18 字）" autocomplete="off">
+    <div class="actions">
+      <button id="btnCancel">取消</button>
+      <button id="btnConfirm" class="primary">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 核心配置 ============
+const STORAGE_KEY = 'broadcast-constellation:v1';
+const CHANNEL_NAME = 'constellation-sync';
+const MAX_NAME_LEN = 18;
+const CONSTELLATION_RADIUS = 180; // 连线最大距离
+const STAR_RADIUS_BASE = 2.5;
+const STAR_RADIUS_HOVER = 5;
+const STAR_RADIUS_NAMED = 4;
+
+// ============ 状态 ============
+const stars = new Map(); // id -> {x, y, name, createdAt, tabId}
+let hoveredStarId = null;
+let selectedStarId = null; // 待命名的星星
+let animationId = 0;
+let canvas, ctx;
+let channel;
+let myTabId;
+let peerTabCount = 0;
+let isLeader = false;
+let lastBroadcast = 0;
+const BROADCAST_THROTTLE = 50; // ms
+
+// ============ 工具函数 ============
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function dist2(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return dx*dx + dy*dy; }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function setStatus(connected, syncing) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.classList.toggle('connected', connected);
+  dot.classList.toggle('syncing', syncing);
+  txt.textContent = connected ? (syncing ? '同步中…' : '已连接') : '断开连接';
+}
+function updateTabCount() {
+  document.getElementById('tabCount').textContent = peerTabCount + 1;
+}
+
+// ============ 广播通道 ============
+function initChannel() {
+  try {
+    channel = new BroadcastChannel(CHANNEL_NAME);
+  } catch (e) {
+    console.warn('BroadcastChannel 不可用:', e);
+    setStatus(false);
+    return;
+  }
+  myTabId = 'tab-' + uid().slice(0, 6);
+  // 标记自己在线
+  channel.postMessage({ type: 'presence', tabId: myTabId, action: 'join' });
+
+  channel.onmessage = (e) => {
+    const msg = e.data;
+    switch (msg.type) {
+      case 'presence':
+        handlePresence(msg);
+        break;
+      case 'stars-full':
+        receiveFullStars(msg.stars, msg.senderId);
+        break;
+      case 'star-add':
+        receiveStarAdd(msg.star, msg.senderId);
+        break;
+      case 'star-name':
+        receiveStarName(msg.id, msg.name, msg.senderId);
+        break;
+      case 'star-remove':
+        receiveStarRemove(msg.id, msg.senderId);
+        break;
+      case 'reset-all':
+        receiveReset(msg.senderId);
+        break;
+    }
+  };
+  // 定期广播心跳
+  setInterval(() => {
+    channel.postMessage({ type: 'presence', tabId: myTabId, action: 'heartbeat' });
+  }, 3000);
+  // 请求完整星图
+  channel.postMessage({ type: 'request-full', tabId: myTabId });
+}
+
+function handlePresence(msg) {
+  if (msg.tabId === myTabId) return;
+  if (msg.action === 'join' || msg.action === 'heartbeat') {
+    // 新标签页加入，发送完整星图
+    if (msg.action === 'join') {
+      broadcastFullStars(msg.tabId);
+    }
+  }
+  // 简单计数：收到心跳视为在线
+  // 实际应用可维护 Set 并在离线时清理
+  recountPeers();
+}
+function recountPeers() {
+  // 简化：每次收到非自己消息计数+1，实际应维护 Set
+  // 这里用启发式：有消息流通即视为有其他标签
+  peerTabCount = Math.max(peerTabCount, 1);
+  updateTabCount();
+  setStatus(true);
+}
+function broadcast(msg) {
+  if (!channel) return;
+  const now = Date.now();
+  if (now - lastBroadcast < BROADCAST_THROTTLE) {
+    setTimeout(() => broadcast(msg), BROADCAST_THROTTLE);
+    return;
+  }
+  lastBroadcast = now;
+  channel.postMessage(msg);
+}
+function broadcastFullStars(targetTabId = null) {
+  const arr = Array.from(stars.values());
+  broadcast({ type: 'stars-full', stars: arr, senderId: myTabId, targetTabId });
+}
+function broadcastStarAdd(star) {
+  broadcast({ type: 'star-add', star, senderId: myTabId });
+}
+function broadcastStarName(id, name) {
+  broadcast({ type: 'star-name', id, name, senderId: myTabId });
+}
+function broadcastStarRemove(id) {
+  broadcast({ type: 'star-remove', id, senderId: myTabId });
+}
+function broadcastReset() {
+  broadcast({ type: 'reset-all', senderId: myTabId });
+}
+
+// ============ 接收处理 ============
+function receiveFullStars(arr, senderId) {
+  if (senderId === myTabId) return;
+  // 合并：以 ID 为键，保留最新 createdAt
+  let changed = false;
+  for (const s of arr) {
+    const existing = stars.get(s.id);
+    if (!existing || s.createdAt > existing.createdAt) {
+      stars.set(s.id, s);
+      changed = true;
+    }
+  }
+  if (changed) { render(); saveLocal(); }
+}
+function receiveStarAdd(star, senderId) {
+  if (senderId === myTabId) return;
+  stars.set(star.id, star);
+  render(); saveLocal();
+  showToast(`收到来自其他标签的新星星`);
+}
+function receiveStarName(id, name, senderId) {
+  if (senderId === myTabId) return;
+  const s = stars.get(id);
+  if (s) { s.name = name; render(); saveLocal(); }
+}
+function receiveStarRemove(id, senderId) {
+  if (senderId === myTabId) return;
+  stars.delete(id);
+  render(); saveLocal();
+}
+function receiveReset(senderId) {
+  if (senderId === myTabId) return;
+  stars.clear();
+  render(); saveLocal();
+  showToast('星图已被其他标签重置');
+}
+
+// ============ 本地存储 ============
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(stars.values())));
+  } catch (e) { console.warn('localStorage 写入失败', e); }
+}
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      for (const s of arr) stars.set(s.id, s);
+    }
+  } catch (e) { console.warn('localStorage 读取失败', e); }
+}
+
+// ============ 星星操作 ============
+function addStar(x, y) {
+  const star = {
+    id: uid(),
+    x: clamp(x, 0, canvas.width),
+    y: clamp(y, 0, canvas.height),
+    name: '',
+    createdAt: Date.now(),
+    tabId: myTabId
+  };
+  stars.set(star.id, star);
+  broadcastStarAdd(star);
+  render(); saveLocal();
+}
+function nameStar(id, name) {
+  const s = stars.get(id);
+  if (s) {
+    s.name = name.trim().slice(0, MAX_NAME_LEN);
+    broadcastStarName(id, s.name);
+    render(); saveLocal();
+  }
+}
+function removeStar(id) {
+  stars.delete(id);
+  broadcastStarRemove(id);
+  render(); saveLocal();
+}
+function resetAll() {
+  stars.clear();
+  broadcastReset();
+  render(); saveLocal();
+  showToast('星图已重置，所有标签同步清空');
+}
+
+// ============ 渲染 ============
+function resizeCanvas() {
+  canvas.width = canvas.clientWidth * devicePixelRatio;
+  canvas.height = canvas.clientHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  canvas.style.width = canvas.clientWidth + 'px';
+  canvas.style.height = canvas.clientHeight + 'px';
+}
+function getConstellationLines() {
+  // 简单距离阈值连线，避免过度连线
+  const list = Array.from(stars.values());
+  const lines = [];
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length; j++) {
+      const d2 = dist2(list[i], list[j]);
+      if (d2 < CONSTELLATION_RADIUS * CONSTELLATION_RADIUS) {
+        lines.push([list[i], list[j], d2]);
+      }
+    }
+  }
+  // 按距离排序，优先画近的，限制数量防止过度
+  lines.sort((a, b) => a[2] - b[2]);
+  return lines.slice(0, 120);
+}
+function render() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  // 连线
+  const lines = getConstellationLines();
+  for (const [a, b, d2] of lines) {
+    const t = 1 - d2 / (CONSTELLATION_RADIUS * CONSTELLATION_RADIUS);
+    const alpha = 0.15 + 0.35 * t;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = `rgba(61, 184, 248, ${alpha})`;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // 星星
+  const now = Date.now();
+  for (const s of stars.values()) {
+    const isHover = s.id === hoveredStarId;
+    const isNamed = !!s.name;
+    const pulse = isHover ? 1 + 0.3 * Math.sin(now / 150) : 1;
+    const r = (isNamed ? STAR_RADIUS_NAMED : STAR_RADIUS_BASE) * pulse;
+    const glowR = r * (isHover ? 3.5 : isNamed ? 2.5 : 1.8);
+
+    // 发光层
+    const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
+    grad.addColorStop(0, isHover ? 'rgba(125,211,252,0.6)' : isNamed ? 'rgba(125,211,252,0.35)' : 'rgba(125,211,252,0.18)');
+    grad.addColorStop(1, 'rgba(125,211,252,0)');
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, glowR, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // 核心
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = isHover ? '#fff' : isNamed ? '#7dd3fc' : '#fff';
+    ctx.fill();
+
+    // 名字
+    if (isNamed) {
+      ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(125,211,252,0.9)';
+      ctx.fillText(s.name, s.x, s.y - glowR - 6);
+    }
+  }
+}
+function animate() {
+  render();
+  animationId = requestAnimationFrame(animate);
+}
+
+// ============ 交互 ============
+function getCanvasPoint(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * devicePixelRatio,
+    y: (e.clientY - rect.top) * devicePixelRatio
+  };
+}
+function findStarAt(x, y, threshold = 18) {
+  let best = null, bestD2 = threshold * threshold;
+  for (const s of stars.values()) {
+    const d2 = (s.x - x) ** 2 + (s.y - y) ** 2;
+    if (d2 < bestD2) { bestD2 = d2; best = s; }
+  }
+  return best;
+}
+canvas.addEventListener('mousemove', (e) => {
+  const p = getCanvasPoint(e);
+  const star = findStarAt(p.x, p.y);
+  hoveredStarId = star ? star.id : null;
+  canvas.style.cursor = star ? 'pointer' : 'crosshair';
+});
+canvas.addEventListener('mouseleave', () => { hoveredStarId = null; canvas.style.cursor = 'crosshair'; });
+canvas.addEventListener('click', (e) => {
+  if (document.getElementById('nameDialog').classList.contains('show')) return;
+  const p = getCanvasPoint(e);
+  const star = findStarAt(p.x, p.y);
+  if (star) {
+    // 点击已有星星 -> 命名
+    selectedStarId = star.id;
+    openNameDialog(star.name);
+  } else {
+    // 空白处 -> 新增
+    addStar(p.x, p.y);
+  }
+});
+
+// ============ 命名对话框 ============
+const dialog = document.getElementById('nameDialog');
+const input = document.getElementById('nameInput');
+function openNameDialog(currentName = '') {
+  selectedStarId = selectedStarId || null;
+  input.value = currentName;
+  dialog.classList.add('show');
+  input.focus();
+  input.select();
+}
+function closeNameDialog() {
+  dialog.classList.remove('show');
+  selectedStarId = null;
+}
+document.getElementById('btnConfirm').addEventListener('click', () => {
+  if (selectedStarId) nameStar(selectedStarId, input.value);
+  closeNameDialog();
+});
+document.getElementById('btnCancel').addEventListener('click', closeNameDialog);
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { document.getElementById('btnConfirm').click(); }
+  else if (e.key === 'Escape') closeNameDialog();
+});
+dialog.addEventListener('click', (e) => { if (e.target === dialog) closeNameDialog(); });
+
+// ============ 控制按钮 ============
+document.getElementById('btnClear').addEventListener('click', () => {
+  // 仅清空本地视图（不广播），重新加载本地存储即可恢复
+  stars.clear();
+  render();
+  showToast('已清空当前视图，刷新或重新加载可恢复');
+});
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (confirm('确定要重置所有标签页的星图吗？此操作不可撤销。')) {
+    resetAll();
+  }
+});
+
+// ============ 初始化 ============
+function init() {
+  canvas = document.getElementById('canvas');
+  ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  loadLocal();
+  initChannel();
+  animate();
+  // 启动后广播一次完整星图（给新加入的标签）
+  setTimeout(() => broadcastFullStars(), 500);
+}
+init();
+</script>
+</body>
+</html>

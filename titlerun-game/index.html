@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>隐藏信息</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --fg: #c9d1d9;
+            --accent: #58a6ff;
+            --accent-dim: rgba(88, 166, 255, 0.2);
+            --danger: #f85149;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            width: 100%;
+            max-width: 480px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .section-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #8b949e;
+            margin: 0;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            font-size: 13px;
+            color: var(--fg);
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: var(--fg);
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-dim);
+        }
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            min-width: 80px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #0d1117;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #79c0ff;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: #ff7b72;
+        }
+        .result {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            min-height: 60px;
+            word-break: break-all;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .hint {
+            font-size: 12px;
+            color: #8b949e;
+            text-align: center;
+            margin-top: 8px;
+        }
+        .status {
+            font-size: 12px;
+            text-align: center;
+            margin-top: 4px;
+        }
+        .status.error {
+            color: var(--danger);
+        }
+        .status.success {
+            color: #3fb950;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="section-title">输入信息</h2>
+        <div class="input-group">
+            <label for="input">要隐藏的文字（可含空格/换行）</label>
+            <textarea id="input" placeholder="输入你想藏在标题里的信息..."></textarea>
+        </div>
+        <div class="controls">
+            <button id="btn-encode" class="btn-primary">生成密文</button>
+            <button id="btn-decode" class="btn-primary">解码显示</button>
+            <button id="btn-clear" class="btn-danger">清空</button>
+        </div>
+        <div id="result" class="result"></div>
+        <div id="status" class="status"></div>
+        <div class="hint">滚动页面可实时解码标题栏中的隐写信息</div>
+    </div>
+    <script>
+        const ZERO_WIDTH = {
+            ZERO_WIDTH_JOINER: '\u200D',
+            ZERO_WIDTH_NON_JOINER: '\u200C',
+            ZERO_WIDTH_SPACE: '\u200B',
+            ZERO_WIDTH_NO_BREAK_SPACE: '\uFEFF',
+            ZERO_WIDTH_OMITTED: '\u3164'
+        };
+
+        const ZW_CHARS = [
+            ZERO_WIDTH.ZERO_WIDTH_SPACE,
+            ZERO_WIDTH.ZERO_WIDTH_JOINER,
+            ZERO_WIDTH.ZERO_WIDTH_NON_JOINER,
+            ZERO_WIDTH.ZERO_WIDTH_NO_BREAK_SPACE,
+            ZERO_WIDTH.ZERO_WIDTH_OMITTED
+        ];
+
+        function encodeToZeros(str) {
+            let encoded = '';
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                if (char === ' ') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_SPACE;
+                } else if (char === '\n') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_JOINER + ZERO_WIDTH.ZERO_WIDTH_JOINER;
+                } else if (char === '\r') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_JOINER;
+                } else if (char === '\t') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_JOINER + ZERO_WIDTH.ZERO_WIDTH_JOINER + ZERO_WIDTH.ZERO_WIDTH_JOINER;
+                } else if (char === '\u200B') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_OMITTED;
+                } else if (char === '\u200C') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_JOINER + ZERO_WIDTH.ZERO_WIDTH_NON_JOINER;
+                } else if (char === '\u200D') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_NON_JOINER + ZERO_WIDTH.ZERO_WIDTH_JOINER;
+                } else if (char === '\uFEFF') {
+                    encoded += ZERO_WIDTH.ZERO_WIDTH_NO_BREAK_SPACE;
+                } else {
+                    encoded += char;
+                }
+            }
+            return encoded;
+        }
+
+        function decodeFromZeros(encoded) {
+            let decoded = '';
+            for (let i = 0; i < encoded.length; i++) {
+                const char = encoded[i];
+                if (char === ZERO_WIDTH.ZERO_WIDTH_SPACE) {
+                    decoded += ' ';
+                } else if (char === ZERO_WIDTH.ZERO_WIDTH_JOINER) {
+                    decoded += '\n';
+                } else if (char === ZERO_WIDTH.ZERO_WIDTH_NON_JOINER) {
+                    decoded += '\r';
+                } else if (char === ZERO_WIDTH.ZERO_WIDTH_NO_BREAK_SPACE) {
+                    decoded += '\t';
+                } else if (char === ZERO_WIDTH.ZERO_WIDTH_OMITTED) {
+                    decoded += '\u200B';
+                } else if (encoded[i+1] === ZERO_WIDTH.ZERO_WIDTH_JOINER && char === ZERO_WIDTH.ZERO_WIDTH_NON_JOINER) {
+                    decoded += '\u200C';
+                    i++;
+                } else if (encoded[i+1] === ZERO_WIDTH.ZERO_WIDTH_NON_JOINER && char === ZERO_WIDTH.ZERO_WIDTH_JOINER) {
+                    decoded += '\u200D';
+                    i++;
+                } else {
+                    decoded += char;
+                }
+            }
+            return decoded;
+        }
+
+        const inputEl = document.getElementById('input');
+        const resultEl = document.getElementById('result');
+        const statusEl = document.getElementById('status');
+        const btnEncode = document.getElementById('btn-encode');
+        const btnDecode = document.getElementById('btn-decode');
+        const btnClear = document.getElementById('btn-clear');
+
+        function updateStatus(msg, type = '') {
+            statusEl.textContent = msg;
+            statusEl.className = 'status ' + type;
+        }
+
+        function clearAll() {
+            inputEl.value = '';
+            resultEl.textContent = '';
+            updateStatus('');
+            document.title = '隐藏信息';
+        }
+
+        btnEncode.addEventListener('click', () => {
+            const text = inputEl.value;
+            if (!text) {
+                updateStatus('请输入要隐藏的文字', 'error');
+                return;
+            }
+            const encoded = encodeToZeros(text);
+            document.title = encoded;
+            resultEl.textContent = encoded;
+            updateStatus('已注入到标题栏，滚动页面解码', 'success');
+        });
+
+        btnDecode.addEventListener('click', () => {
+            const encoded = document.title;
+            if (!encoded) {
+                updateStatus('标题栏没有隐写内容', 'error');
+                return;
+            }
+            const decoded = decodeFromZeros(encoded);
+            resultEl.textContent = decoded;
+            updateStatus('解码成功', 'success');
+        });
+
+        btnClear.addEventListener('click', clearAll);
+
+        window.addEventListener('scroll', () => {
+            const encoded = document.title;
+            if (encoded && encoded.length > 0) {
+                const decoded = decodeFromZeros(encoded);
+                if (decoded !== resultEl.textContent) {
+                    resultEl.textContent = decoded;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

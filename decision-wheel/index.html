@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>随机决策转盘</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1f232c;
+    --text: #e7eaf0;
+    --muted: #9aa3b2;
+    --accent: #6c8cff;
+    --accent-2: #ff7a9c;
+    --shadow: 0 10px 40px rgba(0,0,0,.45);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(1200px 600px at 50% -10%, #1a2030 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 48px;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: .5px;
+    margin: 0 0 4px;
+  }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .layout {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 940px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,.05);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+  }
+  .wheel-wrap {
+    position: relative;
+    width: 360px;
+    height: 360px;
+    max-width: 86vw;
+    max-height: 86vw;
+  }
+  canvas { display: block; width: 100%; height: 100%; border-radius: 50%; }
+  .pointer {
+    position: absolute;
+    top: -6px; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 26px solid var(--accent-2);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,.5));
+    z-index: 3;
+  }
+  .hub {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 66px; height: 66px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    border: 3px solid var(--accent);
+    color: var(--text);
+    font-weight: 650;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,.5);
+    transition: transform .12s ease, background .2s;
+    z-index: 4;
+  }
+  .hub:hover { background: var(--accent); color: #fff; }
+  .hub:active { transform: translate(-50%,-50%) scale(.94); }
+  .hub:disabled { opacity: .5; cursor: default; }
+
+  .side { width: 320px; max-width: 90vw; }
+  .side h2 { font-size: 14px; margin: 0 0 12px; color: var(--muted); font-weight: 600; }
+  .list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; padding-right: 4px; }
+  .item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel-2);
+    border-radius: 12px;
+    padding: 9px 11px;
+  }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 auto; }
+  .item input {
+    flex: 1; background: transparent; border: none; color: var(--text);
+    font-size: 14px; outline: none; min-width: 0;
+  }
+  .item button {
+    border: none; background: transparent; color: var(--muted);
+    cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px;
+    border-radius: 6px;
+  }
+  .item button:hover { background: rgba(255,255,255,.08); color: var(--accent-2); }
+  .row { display: flex; gap: 8px; margin-top: 14px; }
+  input.add {
+    flex: 1; background: var(--panel-2); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px; color: var(--text); padding: 10px 12px; font-size: 14px; outline: none;
+  }
+  input.add:focus { border-color: var(--accent); }
+  button.btn {
+    border: none; border-radius: 10px; padding: 10px 14px; font-size: 14px;
+    font-weight: 600; cursor: pointer; color: #fff; background: var(--accent);
+    transition: filter .15s;
+  }
+  button.btn:hover { filter: brightness(1.08); }
+  button.ghost { background: var(--panel-2); color: var(--muted); }
+  .result {
+    margin-top: 18px; text-align: center; font-size: 15px; min-height: 22px; color: var(--muted);
+  }
+  .result b { color: var(--accent-2); font-size: 18px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+  <h1>🎯 随机决策转盘</h1>
+  <div class="sub">把纠结交给运气 — 自定义选项，一键旋转定夺</div>
+
+  <div class="layout">
+    <div class="panel wheel-wrap">
+      <div class="pointer"></div>
+      <canvas id="wheel" width="720" height="720"></canvas>
+      <button class="hub" id="spin">开始</button>
+    </div>
+
+    <div class="panel side">
+      <h2>选项（双击文字可改）</h2>
+      <div class="list" id="list"></div>
+      <div class="row">
+        <input class="add" id="addInput" placeholder="新增一个选项…" maxlength="20">
+        <button class="btn" id="addBtn">添加</button>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="resetBtn">恢复默认</button>
+        <button class="btn ghost" id="clearBtn">清空</button>
+      </div>
+      <div class="result" id="result">点击中间按钮转动</div>
+      <div class="hint">提示：至少保留 2 个选项才能转动。转盘结果随机且不可预测，纯娱乐用途。</div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+  var palette = ["#6c8cff","#ff7a9c","#4ec9a8","#ffb454","#b78cff","#ff6b6b","#3fb6ff","#8bd450","#ff9f43","#c084fc"];
+  var defaults = ["吃啥","看电影","去运动","宅家","点外卖","随便"];
+
+  var canvas = document.getElementById("wheel");
+  var ctx = canvas.getContext("2d");
+  var listEl = document.getElementById("list");
+  var addInput = document.getElementById("addInput");
+  var addBtn = document.getElementById("addBtn");
+  var resetBtn = document.getElementById("resetBtn");
+  var clearBtn = document.getElementById("clearBtn");
+  var spinBtn = document.getElementById("spin");
+  var resultEl = document.getElementById("result");
+
+  var options = defaults.slice();
+  var rotation = 0;          // 当前弧度
+  var spinning = false;
+  var STORAGE = "decision-wheel-options";
+
+  function load() {
+    try {
+      var s = localStorage.getItem(STORAGE);
+      if (s) { var a = JSON.parse(s); if (Array.isArray(a) && a.length) return a; }
+    } catch (e) {}
+    return defaults.slice();
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE, JSON.stringify(options)); } catch (e) {}
+  }
+
+  function colorFor(i) { return palette[i % palette.length]; }
+
+  function renderList() {
+    listEl.innerHTML = "";
+    options.forEach(function (opt, i) {
+      var item = document.createElement("div");
+      item.className = "item";
+      var sw = document.createElement("div");
+      sw.className = "swatch";
+      sw.style.background = colorFor(i);
+      var inp = document.createElement("input");
+      inp.value = opt;
+      inp.addEventListener("change", function () {
+        var v = inp.value.trim();
+        options[i] = v || options[i];
+        inp.value = options[i];
+        save(); draw();
+      });
+      var del = document.createElement("button");
+      del.textContent = "×";
+      del.title = "删除";
+      del.addEventListener("click", function () {
+        if (options.length <= 2) { flash("至少保留 2 个选项"); return; }
+        options.splice(i, 1);
+        save(); renderList(); draw();
+      });
+      item.appendChild(sw); item.appendChild(inp); item.appendChild(del);
+      listEl.appendChild(item);
+    });
+  }
+
+  function draw() {
+    var n = options.length;
+    var size = canvas.width;
+    var r = size / 2;
+    ctx.clearRect(0, 0, size, size);
+    if (n === 0) return;
+    var seg = (Math.PI * 2) / n;
+    for (var i = 0; i < n; i++) {
+      var start = rotation + i * seg;
+      var end = start + seg;
+      ctx.beginPath();
+      ctx.moveTo(r, r);
+      ctx.arc(r, r, r - 4, start, end);
+      ctx.closePath();
+      ctx.fillStyle = colorFor(i);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(15,17,21,.9)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // 文字
+      ctx.save();
+      ctx.translate(r, r);
+      ctx.rotate(start + seg / 2);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#fff";
+      ctx.font = "600 " + Math.max(20, Math.min(34, 520 / Math.max(8, n))) + "px -apple-system, sans-serif";
+      ctx.shadowColor = "rgba(0,0,0,.4)";
+      ctx.shadowBlur = 4;
+      var label = options[i];
+      if (label.length > 10) label = label.slice(0, 9) + "…";
+      ctx.fillText(label, r - 26, 8);
+      ctx.restore();
+    }
+  }
+
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function spin() {
+    if (spinning) return;
+    if (options.length < 2) { flash("至少保留 2 个选项"); return; }
+    spinning = true;
+    spinBtn.disabled = true;
+    resultEl.innerHTML = "转动中…";
+    var n = options.length;
+    var seg = (Math.PI * 2) / n;
+    var turns = 5 + Math.floor(Math.random() * 4);        // 5~8 圈
+    var targetIdx = Math.floor(Math.random() * n);
+    // 指针在正上方( -PI/2 )，需使第 targetIdx 扇区中心对准顶部：
+    // finalRot + targetIdx*seg + seg/2 ≡ -PI/2  (mod 2PI)
+    var startRot = rotation;
+    function norm(a) { a = a % (Math.PI * 2); if (a < 0) a += Math.PI * 2; return a; }
+    var startMod = norm(startRot);
+    var targetMod = norm(-Math.PI / 2 - targetIdx * seg - seg / 2);
+    var delta = norm(targetMod - startMod);
+    var finalRot = startRot + turns * Math.PI * 2 + delta;
+    var dur = 3600;
+    var t0 = performance.now();
+    function frame(now) {
+      var p = Math.min(1, (now - t0) / dur);
+      rotation = startRot + (finalRot - startRot) * easeOut(p);
+      draw();
+      if (p < 1) { requestAnimationFrame(frame); }
+      else {
+        spinning = false;
+        spinBtn.disabled = false;
+        rotation = finalRot % (Math.PI * 2);
+        draw();
+        resultEl.innerHTML = "结果：<b>" + escapeHtml(options[targetIdx]) + "</b>";
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function flash(msg) {
+    resultEl.textContent = msg;
+  }
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function (c) {
+      return ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" })[c];
+    });
+  }
+
+  function addOption() {
+    var v = addInput.value.trim();
+    if (!v) return;
+    options.push(v);
+    addInput.value = "";
+    save(); renderList(); draw();
+  }
+
+  spinBtn.addEventListener("click", spin);
+  addBtn.addEventListener("click", addOption);
+  addInput.addEventListener("keydown", function (e) { if (e.key === "Enter") addOption(); });
+  resetBtn.addEventListener("click", function () {
+    options = defaults.slice(); save(); renderList(); draw();
+    resultEl.textContent = "已恢复默认";
+  });
+  clearBtn.addEventListener("click", function () {
+    if (options.length <= 2) { options = defaults.slice(); }
+    else { options = []; }
+    if (options.length === 0) { flash("已清空，请添加选项"); }
+    save(); renderList(); draw();
+  });
+
+  // 初始化
+  options = load();
+  if (options.length < 2) options = defaults.slice();
+  renderList();
+  draw();
+})();
+</script>
+</body>
+</html>

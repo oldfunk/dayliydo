@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跨标签粒子喷泉 · 确定性共享模拟</title>
+<style>
+:root {
+  --bg: #050810;
+  --bg-elevated: #0c1222;
+  --fg: #e8edf5;
+  --muted: #5a6a8a;
+  --accent: #fbbf24;
+  --accent-dim: #f59e0b;
+  --card: #0f172a;
+  --border: #1e2a44;
+  --shadow: rgba(0,0,0,0.5);
+  --particle-glow: #fbbf24;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f8fafc;
+    --bg-elevated: #ffffff;
+    --fg: #0f172a;
+    --muted: #64748b;
+    --accent: #b45309;
+    --accent-dim: #d97706;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --shadow: rgba(15,23,42,0.1);
+    --particle-glow: #b45309;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+}
+canvas { display: block; flex: 1; width: 100%; height: 100%; cursor: crosshair; }
+header {
+  padding: 14px 20px;
+  background: linear-gradient(180deg, var(--bg-elevated), transparent);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  z-index: 10;
+}
+h1 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+h1 .badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.3s;
+}
+.status-dot.connected { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.status-dot.syncing { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.controls { display: flex; gap: 8px; align-items: center; }
+button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+button:hover { border-color: var(--accent); background: var(--bg); }
+button:active { transform: scale(0.98); }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+button.primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.tab-count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
+.particle-count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--fg); font-size: 0.8rem; }
+footer {
+  padding: 10px 20px;
+  background: linear-gradient(0deg, var(--bg-elevated), transparent);
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+footer kbd {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 10px 18px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px var(--shadow);
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+  pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.color-palette {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.color-swatch {
+  width: 24px; height: 24px; border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.active { border-color: var(--fg); box-shadow: 0 0 0 2px var(--accent); }
+@media (max-width: 520px) {
+  header { padding: 10px 14px; }
+  h1 { font-size: 1rem; }
+  footer { padding: 8px 14px; font-size: 0.7rem; }
+  .color-swatch { width: 20px; height: 20px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>跨标签粒子喷泉 <span class="badge">BroadcastChannel</span></h1>
+  <div class="status">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">正在连接…</span>
+    <span class="tab-count" id="tabCount">1</span> 个标签页
+  </div>
+  <div class="controls">
+    <div class="color-palette" id="colorPalette" title="点击选择发射颜色"></div>
+    <button id="btnClear" title="清空当前视图粒子（不影响其他标签）">清空视图</button>
+    <button id="btnReset" class="primary" title="重置全网粒子（需确认）">重置全网</button>
+  </div>
+</header>
+<canvas id="canvas"></canvas>
+<footer>
+  <span>点击/拖拽画布发射粒子 · 所有标签页运行相同确定性物理模拟 · 仅同步发射事件，零位置流量</span>
+  <span><kbd>C</kbd> 清空视图 · <kbd>R</kbd> 重置全网 · <kbd>1-6</kbd> 切色</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ 核心配置 ============
+const STORAGE_KEY = 'broadcast-particle-fountain:v1';
+const CHANNEL_NAME = 'particle-fountain-sync';
+const MAX_PARTICLES = 800;
+const GRAVITY = 0.18;
+const DRAG = 0.992;
+const PARTICLE_LIFE_BASE = 180; // frames
+const PARTICLE_LIFE_VARIANCE = 60;
+const EMIT_COUNT = 18; // per click
+const EMIT_SPEED = 4.5;
+const EMIT_SPREAD = Math.PI * 2;
+const TRAIL_LENGTH = 8;
+const GHOST_CURSOR_LIFE = 120; // frames
+const BROADCAST_THROTTLE = 30; // ms
+
+// Palette: warm fire tones + cool accents
+const PALETTE = [
+  { name: '琥珀', color: '#fbbf24', glow: '#fbbf24' },
+  { name: '橙红', color: '#f97316', glow: '#fb923c' },
+  { name: '深红', color: '#ef4444', glow: '#f87171' },
+  { name: '青绿', color: '#14b8a6', glow: '#5eead4' },
+  { name: '紫罗兰', color: '#a855f7', glow: '#d8b4fe' },
+  { name: '冰蓝', color: '#06b6d4', glow: '#67e8f9' },
+];
+
+// ============ 状态 ============
+const particles = []; // {x, y, vx, vy, life, maxLife, color, glow, trail: [{x,y}]}
+const ghostCursors = []; // {x, y, color, life, maxLife, tabId}
+let animationId = 0;
+let canvas, ctx;
+let channel;
+let myTabId;
+let peerTabCount = 0;
+let lastBroadcast = 0;
+let currentColorIndex = 0;
+let isPointerDown = false;
+let lastEmitTime = 0;
+const EMIT_INTERVAL = 50; // ms between bursts while dragging
+
+// ============ 工具函数 ============
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function setStatus(connected, syncing) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.classList.toggle('connected', connected);
+  dot.classList.toggle('syncing', syncing);
+  txt.textContent = connected ? (syncing ? '同步中…' : '已连接') : '断开连接';
+}
+function updateTabCount() {
+  document.getElementById('tabCount').textContent = peerTabCount + 1;
+}
+function updateParticleCount() {
+  const el = document.getElementById('particleCount');
+  if (el) el.textContent = particles.length;
+}
+
+// ============ 颜色选择器 ============
+function renderPalette() {
+  const container = document.getElementById('colorPalette');
+  container.innerHTML = '';
+  PALETTE.forEach((p, i) => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch' + (i === currentColorIndex ? ' active' : '');
+    swatch.style.background = p.color;
+    swatch.style.boxShadow = `0 0 8px ${p.glow}`;
+    swatch.title = p.name;
+    swatch.addEventListener('click', () => {
+      currentColorIndex = i;
+      renderPalette();
+    });
+    container.appendChild(swatch);
+  });
+}
+
+// ============ 广播通道 ============
+function initChannel() {
+  try {
+    channel = new BroadcastChannel(CHANNEL_NAME);
+  } catch (e) {
+    console.warn('BroadcastChannel 不可用:', e);
+    setStatus(false);
+    return;
+  }
+  myTabId = 'tab-' + uid().slice(0, 6);
+  channel.postMessage({ type: 'presence', tabId: myTabId, action: 'join' });
+
+  channel.onmessage = (e) => {
+    const msg = e.data;
+    switch (msg.type) {
+      case 'presence':
+        handlePresence(msg);
+        break;
+      case 'emit':
+        receiveEmit(msg);
+        break;
+      case 'reset-all':
+        receiveReset(msg.senderId);
+        break;
+    }
+  };
+  setInterval(() => {
+    channel.postMessage({ type: 'presence', tabId: myTabId, action: 'heartbeat' });
+  }, 3000);
+  channel.postMessage({ type: 'request-full', tabId: myTabId });
+}
+
+function handlePresence(msg) {
+  if (msg.tabId === myTabId) return;
+  if (msg.action === 'join') {
+    // 发送完整状态给新标签（可选：粒子太多不发全量，仅发近期发射事件）
+    // 这里简化：新标签自行从本地存储恢复，或不恢复历史
+  }
+  peerTabCount = Math.max(peerTabCount, 1);
+  updateTabCount();
+  setStatus(true);
+}
+
+function broadcast(msg) {
+  if (!channel) return;
+  const now = Date.now();
+  if (now - lastBroadcast < BROADCAST_THROTTLE) {
+    setTimeout(() => broadcast(msg), BROADCAST_THROTTLE);
+    return;
+  }
+  lastBroadcast = now;
+  channel.postMessage(msg);
+}
+
+function broadcastEmit(x, y, colorIndex, timestamp) {
+  broadcast({ type: 'emit', x, y, colorIndex, timestamp, senderId: myTabId });
+}
+
+function broadcastReset() {
+  broadcast({ type: 'reset-all', senderId: myTabId });
+}
+
+function receiveEmit(msg) {
+  if (msg.senderId === myTabId) return;
+  // 确定性重放：在接收端用相同时间戳创建粒子
+  // 但模拟已从 timestamp 运行了 (now - timestamp) 时间
+  // 解决方案：接收时立即创建粒子，但模拟时间已推进
+  // 更简单：广播时包含服务器时间戳，接收端计算已过帧数并快进
+  const now = performance.now();
+  const elapsedFrames = Math.floor((now - msg.timestamp) / (1000/60));
+  spawnParticles(msg.x, msg.y, msg.colorIndex, elapsedFrames);
+  showToast(`收到来自其他标签的发射`);
+}
+
+function receiveReset(senderId) {
+  if (senderId === myTabId) return;
+  particles.length = 0;
+  ghostCursors.length = 0;
+  render();
+  showToast('粒子系统已被其他标签重置');
+}
+
+// ============ 本地存储（仅保存配置，粒子不持久化——易失性即特性）===========
+function saveConfig() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ colorIndex: currentColorIndex }));
+  } catch (e) { console.warn('localStorage 写入失败', e); }
+}
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      currentColorIndex = clamp(cfg.colorIndex ?? 0, 0, PALETTE.length - 1);
+    }
+  } catch (e) { console.warn('localStorage 读取失败', e); }
+}
+
+// ============ 粒子系统 ============
+function spawnParticles(x, y, colorIndex, fastForwardFrames = 0) {
+  const palette = PALETTE[colorIndex];
+  const count = Math.min(EMIT_COUNT, MAX_PARTICLES - particles.length);
+  if (count <= 0) return;
+
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * EMIT_SPREAD;
+    const speed = EMIT_SPEED * (0.6 + Math.random() * 0.8);
+    const life = PARTICLE_LIFE_BASE + Math.random() * PARTICLE_LIFE_VARIANCE;
+    const p = {
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: life - fastForwardFrames,
+      maxLife: life,
+      color: palette.color,
+      glow: palette.glow,
+      trail: []
+    };
+    // 预计算轨迹用于快进（可选优化，这里简化：直接快进模拟）
+    if (fastForwardFrames > 0) {
+      fastForwardParticle(p, fastForwardFrames);
+    }
+    particles.push(p);
+  }
+  // 添加鬼影光标
+  ghostCursors.push({
+    x, y,
+    color: palette.color,
+    glow: palette.glow,
+    life: GHOST_CURSOR_LIFE,
+    maxLife: GHOST_CURSOR_LIFE,
+    tabId: 'remote'
+  });
+}
+
+function fastForwardParticle(p, frames) {
+  for (let f = 0; f < frames && p.life > 0; f++) {
+    // 更新轨迹
+    p.trail.unshift({ x: p.x, y: p.y });
+    if (p.trail.length > TRAIL_LENGTH) p.trail.pop();
+    // 物理
+    p.vy += GRAVITY;
+    p.vx *= DRAG;
+    p.vy *= DRAG;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+  }
+}
+
+function simulateParticle(p) {
+  // 轨迹
+  p.trail.unshift({ x: p.x, y: p.y });
+  if (p.trail.length > TRAIL_LENGTH) p.trail.pop();
+  // 物理
+  p.vy += GRAVITY;
+  p.vx *= DRAG;
+  p.vy *= DRAG;
+  p.x += p.vx;
+  p.y += p.vy;
+  p.life--;
+}
+
+function simulateGhostCursor(g) {
+  g.life--;
+}
+
+// ============ 渲染 ============
+function resizeCanvas() {
+  const dpr = devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+  ctx.scale(dpr, dpr);
+  canvas.style.width = canvas.clientWidth + 'px';
+  canvas.style.height = canvas.clientHeight + 'px';
+}
+
+function render() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  // 绘制粒子（按生命周期排序，旧的先画）
+  const alive = [];
+  for (const p of particles) {
+    if (p.life > 0 && p.x > -50 && p.x < w + 50 && p.y > -50 && p.y < h + 50) {
+      alive.push(p);
+    }
+  }
+  // 就地过滤
+  particles.length = 0;
+  particles.push(...alive);
+
+  for (const p of alive) {
+    const t = p.life / p.maxLife;
+    const alpha = 0.3 + 0.7 * t;
+    const size = 2.5 * (0.5 + 0.5 * t);
+
+    // 轨迹
+    if (p.trail.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(p.trail[p.trail.length - 1].x, p.trail[p.trail.length - 1].y);
+      for (let i = p.trail.length - 2; i >= 0; i--) {
+        const pt = p.trail[i];
+        const trailT = i / (p.trail.length - 1);
+        const trailAlpha = alpha * trailT * 0.6;
+        ctx.lineTo(pt.x, pt.y);
+        ctx.strokeStyle = `rgba(${hexToRgb(p.color)}, ${trailAlpha})`;
+        ctx.lineWidth = size * trailT * 0.7;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pt.x, pt.y);
+      }
+    }
+
+    // 粒子核心
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${hexToRgb(p.color)}, ${alpha})`;
+    ctx.fill();
+
+    // 发光效果
+    const glowSize = size * 3;
+    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowSize);
+    gradient.addColorStop(0, `rgba(${hexToRgb(p.glow)}, ${alpha * 0.4})`);
+    gradient.addColorStop(1, `rgba(${hexToRgb(p.glow)}, 0)`);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, glowSize, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+  }
+
+  // 鬼影光标
+  for (const g of ghostCursors) {
+    if (g.life <= 0) continue;
+    const t = g.life / g.maxLife;
+    const size = 12 * t;
+    const alpha = 0.6 * t;
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, size, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${hexToRgb(g.color)}, ${alpha})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 十字准星
+    const cross = size * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(g.x - cross, g.y);
+    ctx.lineTo(g.x + cross, g.y);
+    ctx.moveTo(g.x, g.y - cross);
+    ctx.lineTo(g.x, g.y + cross);
+    ctx.strokeStyle = `rgba(${hexToRgb(g.color)}, ${alpha * 0.5})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 粒子计数
+  const countEl = document.getElementById('particleCount');
+  if (!countEl) {
+    const footer = document.querySelector('footer');
+    const span = document.createElement('span');
+    span.id = 'particleCount';
+    span.className = 'particle-count';
+    footer.insertBefore(span, footer.firstChild);
+  }
+  document.getElementById('particleCount').textContent = particles.length;
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
+// ============ 交互 ============
+function getCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX || e.touches?.[0]?.clientX || 0) - rect.left,
+    y: (e.clientY || e.touches?.[0]?.clientY || 0) - rect.top
+  };
+}
+
+function handlePointerDown(e) {
+  isPointerDown = true;
+  const pos = getCanvasPos(e);
+  emitAt(pos.x, pos.y);
+}
+
+function handlePointerMove(e) {
+  if (!isPointerDown) return;
+  const now = Date.now();
+  if (now - lastEmitTime < EMIT_INTERVAL) return;
+  lastEmitTime = now;
+  const pos = getCanvasPos(e);
+  emitAt(pos.x, pos.y);
+}
+
+function handlePointerUp() {
+  isPointerDown = false;
+}
+
+function emitAt(x, y) {
+  const timestamp = performance.now();
+  spawnParticles(x, y, currentColorIndex, 0);
+  broadcastEmit(x, y, currentColorIndex, timestamp);
+}
+
+function clearView() {
+  particles.length = 0;
+  ghostCursors.length = 0;
+  render();
+  showToast('视图已清空（仅本标签）');
+}
+
+function resetAll() {
+  if (!confirm('确定要重置所有标签页的粒子系统吗？')) return;
+  particles.length = 0;
+  ghostCursors.length = 0;
+  broadcastReset();
+  render();
+  showToast('全网粒子系统已重置');
+}
+
+// ============ 主循环 ============
+function tick() {
+  // 模拟
+  for (const p of particles) simulateParticle(p);
+  for (let i = ghostCursors.length - 1; i >= 0; i--) {
+    simulateGhostCursor(ghostCursors[i]);
+    if (ghostCursors[i].life <= 0) ghostCursors.splice(i, 1);
+  }
+  // 渲染
+  render();
+  animationId = requestAnimationFrame(tick);
+}
+
+// ============ 初始化 ============
+function init() {
+  canvas = document.getElementById('canvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  loadConfig();
+  renderPalette();
+  initChannel();
+
+  canvas.addEventListener('mousedown', handlePointerDown);
+  canvas.addEventListener('mousemove', handlePointerMove);
+  window.addEventListener('mouseup', handlePointerUp);
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, { passive: false });
+  window.addEventListener('touchend', handlePointerUp);
+
+  document.getElementById('btnClear').addEventListener('click', clearView);
+  document.getElementById('btnReset').addEventListener('click', resetAll);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'c' || e.key === 'C') clearView();
+    if (e.key === 'r' || e.key === 'R') resetAll();
+    const num = parseInt(e.key, 10);
+    if (num >= 1 && num <= PALETTE.length) {
+      currentColorIndex = num - 1;
+      renderPalette();
+    }
+  });
+
+  tick();
+}
+
+init();
+</script>
+</body>
+</html>

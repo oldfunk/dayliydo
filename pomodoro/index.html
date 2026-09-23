@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄钟 · 专注计时</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --accent:#ff6b6b; --accent2:#4dd4ac;
+    --text:#e8eaed; --muted:#8b909a; --ring:#2a2f3a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(1200px 600px at 50% -10%, #1b2030, var(--bg));
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:var(--text); padding:24px;
+  }
+  .card{
+    width:min(420px,100%); background:var(--card); border:1px solid #232832;
+    border-radius:24px; padding:32px 28px; box-shadow:0 20px 60px rgba(0,0,0,.45);
+    text-align:center;
+  }
+  h1{font-size:18px; font-weight:600; letter-spacing:.5px; color:var(--muted); margin-bottom:20px}
+  .modes{display:flex; gap:8px; justify-content:center; margin-bottom:24px}
+  .mode{
+    flex:1; padding:10px 0; border-radius:12px; border:1px solid #2a2f3a; background:#11141b;
+    color:var(--muted); font-size:14px; cursor:pointer; transition:.2s;
+  }
+  .mode.active{color:#fff; border-color:var(--accent); background:rgba(255,107,107,.12)}
+  .ring-wrap{position:relative; width:240px; height:240px; margin:0 auto 24px}
+  svg{transform:rotate(-90deg)}
+  .track{fill:none; stroke:var(--ring); stroke-width:14}
+  .prog{fill:none; stroke:var(--accent); stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset .3s linear}
+  .time{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center}
+  .time .big{font-size:52px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px}
+  .time .lbl{font-size:13px; color:var(--muted); margin-top:4px}
+  .btns{display:flex; gap:12px; justify-content:center}
+  button.act{flex:1; padding:14px 0; border:none; border-radius:14px; font-size:15px; font-weight:600; cursor:pointer; transition:.15s}
+  .primary{background:var(--accent); color:#1a0e0e}
+  .primary:hover{filter:brightness(1.08)}
+  .ghost{background:#11141b; color:var(--text); border:1px solid #2a2f3a}
+  .ghost:hover{background:#1a1f29}
+  .sessions{margin-top:20px; font-size:13px; color:var(--muted)}
+  .sessions b{color:var(--accent2)}
+  .dots{display:inline-flex; gap:6px; margin-left:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#2a2f3a}
+  .dot.on{background:var(--accent2)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>番茄钟 · 专注计时</h1>
+    <div class="modes">
+      <div class="mode active" data-mode="work">专注 25</div>
+      <div class="mode" data-mode="short">短休 5</div>
+      <div class="mode" data-mode="long">长休 15</div>
+    </div>
+    <div class="ring-wrap">
+      <svg width="240" height="240">
+        <circle class="track" cx="120" cy="120" r="104"></circle>
+        <circle class="prog" id="prog" cx="120" cy="120" r="104"></circle>
+      </svg>
+      <div class="time">
+        <div class="big" id="disp">25:00</div>
+        <div class="lbl" id="lbl">准备开始</div>
+      </div>
+    </div>
+    <div class="btns">
+      <button class="act primary" id="toggle">开始</button>
+      <button class="act ghost" id="reset">重置</button>
+    </div>
+    <div class="sessions">已完成专注：<b id="count">0</b> 个 <span class="dots" id="dots"></span></div>
+  </div>
+<script>
+(function(){
+  var DUR={work:25*60, short:5*60, long:15*60};
+  var C=2*Math.PI*104;
+  var prog=document.getElementById('prog');
+  prog.style.strokeDasharray=C;
+  var mode='work', remain=DUR[mode], running=false, timer=null, done=0;
+  function fmt(s){var m=String(Math.floor(s/60)).padStart(2,'0');var ss=String(s%60).padStart(2,'0');return m+':'+ss;}
+  function render(){
+    document.getElementById('disp').textContent=fmt(remain);
+    var ratio=remain/DUR[mode];
+    prog.style.strokeDashoffset=C*(1-ratio);
+    document.getElementById('count').textContent=done;
+    var html='';
+    for(var i=0;i<4;i++){ html+='<span class="dot'+(i<(done%4)?' on':'')+'"></span>'; }
+    document.getElementById('dots').innerHTML=html;
+  }
+  function setMode(m){
+    mode=m; remain=DUR[m]; pause(); document.getElementById('lbl').textContent='准备开始';
+    var els=document.querySelectorAll('.mode');
+    for(var i=0;i<els.length;i++){ els[i].classList.toggle('active', els[i].dataset.mode===m); }
+    prog.style.stroke= m==='work'?'#ff6b6b':(m==='short'?'#4dd4ac':'#6aa6ff');
+    render();
+  }
+  function tick(){
+    if(remain>0){ remain--; render(); }
+    else{
+      pause();
+      if(mode==='work'){ done++; notify(); }
+      document.getElementById('lbl').textContent= mode==='work'?'专注完成！':'休息结束';
+      setMode(mode==='work'? (done%4===0?'long':'short') : 'work');
+    }
+  }
+  function start(){
+    if(running) return; running=true; document.getElementById('toggle').textContent='暂停';
+    document.getElementById('lbl').textContent= mode==='work'?'专注中':'休息中';
+    timer=setInterval(tick,1000);
+  }
+  function pause(){ running=false; clearInterval(timer); document.getElementById('toggle').textContent= remain===DUR[mode]?'开始':'继续'; }
+  document.getElementById('toggle').onclick=function(){ if(running){pause();} else {start();} };
+  document.getElementById('toggle').addEventListener('click',function(){ if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); } });
+  document.getElementById('reset').onclick=function(){ pause(); remain=DUR[mode]; document.getElementById('lbl').textContent='准备开始'; render(); };
+  var modes=document.querySelectorAll('.mode');
+  for(var i=0;i<modes.length;i++){ modes[i].onclick=function(){ setMode(this.dataset.mode); }; }
+  function notify(){ if('Notification' in window && Notification.permission==='granted'){ new Notification('番茄钟','专注完成，起来走走吧'); } }
+  render();
+})();
+</script>
+</body>
+</html>

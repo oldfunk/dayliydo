@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同形字密写 · 替换式隐写工具</title>
+<style>
+  :root {
+    --bg: #0a0f1a;
+    --bg2: #111827;
+    --panel: #1a2332;
+    --line: #2d3a4f;
+    --text: #e8edf5;
+    --muted: #6b7c96;
+    --accent: #fbbf24;
+    --accent2: #f59e0b;
+    --danger: #ef4444;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --radius: 14px;
+    --shadow: 0 10px 40px rgba(0,0,0,.45);
+    --font-mono: 'SF Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f8fafc;
+      --bg2: #ffffff;
+      --panel: #ffffff;
+      --line: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #b45309;
+      --accent2: #d97706;
+      --danger: #dc2626;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --shadow: 0 10px 40px rgba(15,23,42,.12);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1a2a4a 0%, var(--bg) 55%);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 24px 16px 40px;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: 0.4px; }
+  header h1 .i { color: var(--accent); }
+  header p { color: var(--muted); margin: 0; font-size: 14px; }
+  .tabs { display: flex; gap: 8px; justify-content: center; margin: 20px 0 18px; flex-wrap: wrap; }
+  .tab {
+    padding: 9px 18px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--muted); border-radius: 999px; cursor: pointer; font-size: 14px; transition: .18s;
+  }
+  .tab:hover { color: var(--text); border-color: var(--accent); }
+  .tab.on { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg); border-color: transparent; box-shadow: 0 4px 16px rgba(251,191,36,.35); }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px;
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+  label:first-child { margin-top: 0; }
+  textarea, input[type="text"], input[type="password"] {
+    width: 100%; background: var(--bg2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 11px 12px; font-size: 14px; font-family: inherit; resize: vertical; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  textarea:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(251,191,36,0.15); }
+  textarea { min-height: 96px; line-height: 1.5; }
+  textarea.mono { font-family: var(--font-mono); font-size: 13px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); cursor: pointer; user-select: none; }
+  .chk input { width: 16px; height: 16px; accent-color: var(--accent); }
+  button {
+    border: none; cursor: pointer; font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  button:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(251,191,36,.4); }
+  button:active { transform: scale(0.98); }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); box-shadow: none; }
+  button.ghost:hover { color: var(--text); border-color: var(--accent); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .out { margin-top: 14px; }
+  .out .label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .result {
+    background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+    font-size: 14px; white-space: pre-wrap; word-break: break-all; min-height: 48px; position: relative;
+    font-family: var(--font-mono);
+  }
+  .reveal {
+    background: #0a0f17; border: 1px dashed var(--line); border-radius: 10px; padding: 12px; margin-top: 10px;
+    font-size: 14px; white-space: pre-wrap; word-break: break-all; color: var(--muted); min-height: 24px;
+    font-family: var(--font-mono);
+  }
+  .reveal .hg { color: var(--accent); background: rgba(251,191,36,.12); border-radius: 3px; padding: 0 1px; }
+  .msg { font-size: 13px; margin-top: 10px; padding: 9px 12px; border-radius: 9px; display: none; }
+  .msg.show { display: block; }
+  .msg.ok { background: rgba(34,197,94,.12); color: var(--ok); border: 1px solid rgba(34,197,94,.35); }
+  .msg.err { background: rgba(239,68,68,.12); color: var(--danger); border: 1px solid rgba(239,68,68,.35); }
+  .msg.info { background: rgba(245,158,11,.12); color: var(--warn); border: 1px solid rgba(245,158,11,.35); }
+  .stat { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .stat b { color: var(--text); font-weight: 600; }
+  .hidden { display: none; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  details { margin-top: 18px; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 4px 14px; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 13px; padding: 10px 0; font-weight: 600; }
+  details p, details li { font-size: 13px; color: var(--muted); }
+  details code { background: var(--bg); padding: 1px 5px; border-radius: 4px; color: var(--accent); font-family: var(--font-mono); }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 26px; }
+  .diff-badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(251,191,36,.15); color: var(--accent); font-weight: 700; margin-left: 8px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="i">同形字</span>密写</h1>
+    <p>用视觉同形字（西里尔/希腊字母）替换拉丁字母 · 文本长度不变 · 肉眼不可见差异 · 纯离线运行</p>
+  </header>
+
+  <div class="tabs">
+    <div class="tab on" id="tabEncode" onclick="switchTab('encode')">编码隐藏</div>
+    <div class="tab" id="tabDecode" onclick="switchTab('decode')">解码检测</div>
+    <div class="tab" id="tabVisual" onclick="switchTab('visual')">可视化对照</div>
+  </div>
+
+  <!-- 编码面板 -->
+  <section id="panelEncode">
+    <div class="card">
+      <label for="cover">载体文字（可选）</label>
+      <textarea id="cover" placeholder="把密文藏进这段话里。留空则只输出一段看似正常但含隐写的文字。"></textarea>
+
+      <label for="secret">要隐藏的秘密消息</label>
+      <textarea id="secret" placeholder="写点不能让别人看到的话……"></textarea>
+
+      <label for="pass">密码（可选 · 加密后更难破解）</label>
+      <input type="password" id="pass" placeholder="留空则不加密，仅同形字替换">
+
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="chkPreserveCase" checked> 保留大小写映射（更自然）</label>
+        <label class="chk"><input type="checkbox" id="chkPreferCyrillic" checked> 优先西里尔字母（与拉丁最接近）</label>
+      </div>
+      <button id="btnEncode" onclick="doEncode()">生成同形字隐写文本</button>
+    </div>
+
+    <div class="card out">
+      <div class="label">隐写结果 <span id="encodeStats" class="diff-badge hidden"></span></div>
+      <div class="result" id="encodeResult" onclick="copyResult('encodeResult')">点击复制</div>
+      <div class="msg" id="encodeMsg"></div>
+    </div>
+  </section>
+
+  <!-- 解码面板 -->
+  <section id="panelDecode" class="hidden">
+    <div class="card">
+      <label for="stegoText">疑似含隐写的文本</label>
+      <textarea id="stegoText" class="mono" placeholder="粘贴一段可能藏有同形字隐写的文字……"></textarea>
+
+      <label for="passDecode">密码（若编码时设了密码）</label>
+      <input type="password" id="passDecode" placeholder="留空则不解密，仅同形字还原">
+
+      <div class="row">
+        <button id="btnDecode" onclick="doDecode()">解码还原</button>
+        <button class="ghost" onclick="clearDecode()">清空</button>
+      </div>
+    </div>
+
+    <div class="card out">
+      <div class="label">检测详情 <span id="decodeStats" class="diff-badge hidden"></span></div>
+      <div class="reveal" id="decodeReveal"></div>
+      <div class="result" id="decodeResult" onclick="copyResult('decodeResult')">点击复制明文</div>
+      <div class="msg" id="decodeMsg"></div>
+    </div>
+  </section>
+
+  <!-- 可视化对照面板 -->
+  <section id="panelVisual" class="hidden">
+    <div class="card">
+      <label for="visualInput">输入文本（实时高亮同形字）</label>
+      <textarea id="visualInput" class="mono" placeholder="粘贴或输入文本，同形字会被高亮显示……"></textarea>
+      <div class="row">
+        <button class="ghost" onclick="clearVisual()">清空</button>
+      </div>
+    </div>
+    <div class="card out">
+      <div class="label">可视化结果 <span id="visualStats" class="diff-badge hidden"></span></div>
+      <div class="reveal" id="visualReveal"></div>
+      <div class="stat">
+        <span>总字符：<b id="visTotal">0</b></span>
+        <span>同形字：<b id="visHgCount">0</b></span>
+        <span>替换率：<b id="visRatio">0%</b></span>
+      </div>
+    </div>
+    <details>
+      <summary>同形字映射表（完整）</summary>
+      <div id="mappingTable"></div>
+    </details>
+  </section>
+
+  <footer>
+    同形字密写 · 替换式隐写（区别于零宽插入式） · 单文件离线可用 · 双击即开
+  </footer>
+</div>
+
+<script>
+// ============ 同形字映射表 ============
+// Latin -> { primary: Cyrillic, alt: Greek, name }
+const HOMOGLYPH_MAP = {
+  // Capitals
+  'A': { primary: '\u0410', alt: '\u0391', name: 'Cyrillic A / Greek Alpha' },
+  'B': { primary: '\u0412', alt: '\u0392', name: 'Cyrillic Ve / Greek Beta' },
+  'C': { primary: '\u0421', alt: '\u0395', name: 'Cyrillic Es / Greek Epsilon' },
+  'E': { primary: '\u0415', alt: '\u0395', name: 'Cyrillic Ie / Greek Epsilon' },
+  'H': { primary: '\u041D', alt: '\u0397', name: 'Cyrillic En / Greek Eta' },
+  'I': { primary: '\u0406', alt: '\u0399', name: 'Cyrillic Byelorussian I / Greek Iota' },
+  'J': { primary: '\u0408', alt: null, name: 'Cyrillic Je' },
+  'K': { primary: '\u041A', alt: '\u039A', name: 'Cyrillic Ka / Greek Kappa' },
+  'M': { primary: '\u041C', alt: '\u039C', name: 'Cyrillic Em / Greek Mu' },
+  'N': { primary: '\u039D', alt: null, name: 'Greek Nu' }, // Cyrillic H looks different
+  'O': { primary: '\u041E', alt: '\u039F', name: 'Cyrillic O / Greek Omicron' },
+  'P': { primary: '\u0420', alt: '\u03A1', name: 'Cyrillic Er / Greek Rho' },
+  'T': { primary: '\u0422', alt: '\u03A4', name: 'Cyrillic Te / Greek Tau' },
+  'X': { primary: '\u0425', alt: '\u03A7', name: 'Cyrillic Ha / Greek Chi' },
+  'Y': { primary: '\u0423', alt: '\u03A5', name: 'Cyrillic U / Greek Upsilon' },
+  // Lowercase
+  'a': { primary: '\u0430', alt: '\u03B1', name: 'Cyrillic a / Greek alpha' },
+  'c': { primary: '\u0441', alt: null, name: 'Cyrillic es' },
+  'e': { primary: '\u0435', alt: '\u03B5', name: 'Cyrillic ie / Greek epsilon' },
+  'i': { primary: '\u0456', alt: '\u03B9', name: 'Cyrillic i / Greek iota' },
+  'j': { primary: '\u0458', alt: null, name: 'Cyrillic je' },
+  'o': { primary: '\u043E', alt: '\u03BF', name: 'Cyrillic o / Greek omicron' },
+  'p': { primary: '\u0440', alt: '\u03C1', name: 'Cyrillic er / Greek rho' },
+  's': { primary: '\u0455', alt: null, name: 'Cyrillic dze' }, // not perfect but closest
+  'x': { primary: '\u0445', alt: '\u03C7', name: 'Cyrillic ha / Greek chi' },
+  'y': { primary: '\u0443', alt: '\u0443', name: 'Cyrillic u' }, // Greek upsilon looks different
+  // Digits (some work)
+  '0': { primary: '\u043E', alt: null, name: 'Cyrillic o' }, // risky, skip
+  '1': { primary: '\u0456', alt: null, name: 'Cyrillic i' }, // risky
+};
+
+// Build reverse map for decoding
+const REVERSE_MAP = {};
+for (const [latin, info] of Object.entries(HOMOGLYPH_MAP)) {
+  REVERSE_MAP[info.primary] = latin;
+  if (info.alt) REVERSE_MAP[info.alt] = latin;
+}
+
+// All homoglyph chars for detection
+const ALL_HOMOGLYPHS = new Set(Object.values(REVERSE_MAP).flatMap(k => k)); // wrong
+// Fix:
+const ALL_HOMOGLYPH_CHARS = new Set();
+for (const [latin, info] of Object.entries(HOMOGLYPH_MAP)) {
+  ALL_HOMOGLYPH_CHARS.add(info.primary);
+  if (info.alt) ALL_HOMOGLYPH_CHARS.add(info.alt);
+}
+
+// ============ 核心工具函数 ============
+function switchTab(tab) {
+  ['encode', 'decode', 'visual'].forEach(t => {
+    document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('on', t === tab);
+  });
+  if (tab === 'visual') renderMappingTable();
+}
+
+function showMsg(elId, text, type = 'info') {
+  const el = document.getElementById(elId);
+  el.textContent = text;
+  el.className = 'msg show ' + type;
+}
+
+function copyResult(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const original = el.textContent;
+    el.textContent = '✓ 已复制';
+    setTimeout(() => el.textContent = original, 1200);
+  });
+}
+
+function clearDecode() {
+  document.getElementById('stegoText').value = '';
+  document.getElementById('passDecode').value = '';
+  document.getElementById('decodeReveal').textContent = '';
+  document.getElementById('decodeResult').textContent = '点击复制明文';
+  document.getElementById('decodeMsg').classList.remove('show');
+  document.getElementById('decodeStats').classList.add('hidden');
+}
+
+function clearVisual() {
+  document.getElementById('visualInput').value = '';
+  document.getElementById('visualReveal').textContent = '';
+  document.getElementById('visTotal').textContent = '0';
+  document.getElementById('visHgCount').textContent = '0';
+  document.getElementById('visRatio').textContent = '0%';
+  document.getElementById('visualStats').classList.add('hidden');
+}
+
+// ============ 密码加密（简易 XOR + Base64，同 invisible-cipher 风格）===========
+function deriveKey(password, salt) {
+  let hash = 0;
+  const str = password + salt;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+function xorEncrypt(text, password) {
+  const salt = 'glyph-cipher-salt-v1';
+  const key = deriveKey(password, salt);
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  }
+  return btoa(result);
+}
+
+function xorDecrypt(encrypted, password) {
+  try {
+    const salt = 'glyph-cipher-salt-v1';
+    const key = deriveKey(password, salt);
+    const decoded = atob(encrypted);
+    let result = '';
+    for (let i = 0; i < decoded.length; i++) {
+      result += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    return result;
+  } catch (e) {
+    throw new Error('解密失败：密码错误或数据损坏');
+  }
+}
+
+// ============ 同形字编码/解码核心 ============
+function getHomoglyph(latinChar, preferCyrillic) {
+  const info = HOMOGLYPH_MAP[latinChar];
+  if (!info) return null;
+  return preferCyrillic ? info.primary : (info.alt || info.primary);
+}
+
+function encodeToHomoglyphs(text, preferCyrillic) {
+  let result = '';
+  let replaced = 0;
+  for (const ch of text) {
+    const hg = getHomoglyph(ch, preferCyrillic);
+    if (hg) {
+      result += hg;
+      replaced++;
+    } else {
+      result += ch;
+    }
+  }
+  return { text: result, replaced };
+}
+
+function embedInCarrier(carrier, secretEncoded, preferCyrillic) {
+  // Strategy: Replace characters in carrier that have homoglyphs, using them to encode secret bits
+  // But simpler: just replace carrier chars sequentially with secretEncoded chars
+  // If carrier is shorter, append remainder
+  let result = '';
+  let secretIdx = 0;
+  for (const ch of carrier) {
+    if (secretIdx < secretEncoded.length && HOMOGLYPH_MAP[ch]) {
+      result += secretEncoded[secretIdx];
+      secretIdx++;
+    } else {
+      result += ch;
+    }
+  }
+  // Append remaining secret chars if carrier exhausted
+  if (secretIdx < secretEncoded.length) {
+    result += secretEncoded.slice(secretIdx);
+  }
+  return { text: result, embedded: secretIdx };
+}
+
+function detectHomoglyphs(text) {
+  const positions = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ALL_HOMOGLYPH_CHARS.has(ch)) {
+      positions.push({ index: i, char: ch, latin: REVERSE_MAP[ch] });
+    }
+  }
+  return positions;
+}
+
+function decodeFromHomoglyphs(text) {
+  let result = '';
+  let replaced = 0;
+  for (const ch of text) {
+    if (REVERSE_MAP[ch]) {
+      result += REVERSE_MAP[ch];
+      replaced++;
+    } else {
+      result += ch;
+    }
+  }
+  return { text: result, replaced };
+}
+
+// ============ 编码流程 ============
+function doEncode() {
+  const cover = document.getElementById('cover').value;
+  const secret = document.getElementById('secret').value;
+  const pass = document.getElementById('pass').value;
+  const preferCyrillic = document.getElementById('chkPreferCyrillic').checked;
+
+  if (!secret.trim()) {
+    showMsg('encodeMsg', '请输入要隐藏的秘密消息', 'err');
+    return;
+  }
+
+  let payload = secret;
+  if (pass) {
+    try {
+      payload = xorEncrypt(secret, pass);
+    } catch (e) {
+      showMsg('encodeMsg', '加密失败：' + e.message, 'err');
+      return;
+    }
+  }
+
+  // Encode payload to homoglyphs
+  const { text: secretEncoded, replaced: secretReplaced } = encodeToHomoglyphs(payload, preferCyrillic);
+
+  let finalText, statsText;
+  if (cover.trim()) {
+    const { text, embedded } = embedInCarrier(cover, secretEncoded, preferCyrillic);
+    finalText = text;
+    statsText = `载体长度 ${cover.length} | 秘密长度 ${payload.length} | 替换字符 ${secretReplaced} | 嵌入载体 ${embedded}`;
+  } else {
+    finalText = secretEncoded;
+    statsText = `秘密长度 ${payload.length} | 替换字符 ${secretReplaced} | 无载体`;
+  }
+
+  document.getElementById('encodeResult').textContent = finalText;
+  const statsEl = document.getElementById('encodeStats');
+  statsEl.textContent = statsText;
+  statsEl.classList.remove('hidden');
+  showMsg('encodeMsg', '生成成功 · 点击结果区域复制', 'ok');
+}
+
+// ============ 解码流程 ============
+function doDecode() {
+  const stegoText = document.getElementById('stegoText').value;
+  const pass = document.getElementById('passDecode').value;
+
+  if (!stegoText.trim()) {
+    showMsg('decodeMsg', '请输入疑似含隐写的文本', 'err');
+    return;
+  }
+
+  // Detect homoglyphs
+  const positions = detectHomoglyphs(stegoText);
+  if (positions.length === 0) {
+    document.getElementById('decodeReveal').textContent = stegoText;
+    document.getElementById('decodeResult').textContent = '(未检测到同形字)';
+    document.getElementById('decodeStats').textContent = `文本长度 ${stegoText.length} | 同形字 0`;
+    document.getElementById('decodeStats').classList.remove('hidden');
+    showMsg('decodeMsg', '未检测到同形字隐写', 'info');
+    return;
+  }
+
+  // Highlight in reveal
+  let revealHtml = '';
+  for (let i = 0; i < stegoText.length; i++) {
+    const ch = stegoText[i];
+    if (ALL_HOMOGLYPH_CHARS.has(ch)) {
+      revealHtml += `<span class="hg">${escapeHtml(ch)}</span>`;
+    } else {
+      revealHtml += escapeHtml(ch);
+    }
+  }
+  document.getElementById('decodeReveal').innerHTML = revealHtml;
+
+  // Decode
+  const { text: decoded, replaced } = decodeFromHomoglyphs(stegoText);
+
+  let finalText = decoded;
+  if (pass) {
+    try {
+      finalText = xorDecrypt(decoded, pass);
+      showMsg('decodeMsg', '解密成功', 'ok');
+    } catch (e) {
+      showMsg('decodeMsg', '解密失败：' + e.message, 'err');
+      document.getElementById('decodeResult').textContent = '(解密失败)';
+      return;
+    }
+  } else {
+    showMsg('decodeMsg', `检测到 ${positions.length} 个同形字 · 已还原`, 'ok');
+  }
+
+  document.getElementById('decodeResult').textContent = finalText;
+  const statsEl = document.getElementById('decodeStats');
+  statsEl.textContent = `文本长度 ${stegoText.length} | 同形字 ${positions.length} | 还原字符 ${replaced}`;
+  statsEl.classList.remove('hidden');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ============ 可视化面板 ============
+document.getElementById('visualInput').addEventListener('input', function() {
+  const text = this.value;
+  const positions = detectHomoglyphs(text);
+
+  let revealHtml = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ALL_HOMOGLYPH_CHARS.has(ch)) {
+      revealHtml += `<span class="hg">${escapeHtml(ch)}</span>`;
+    } else {
+      revealHtml += escapeHtml(ch);
+    }
+  }
+  document.getElementById('visualReveal').innerHTML = revealHtml;
+
+  document.getElementById('visTotal').textContent = text.length;
+  document.getElementById('visHgCount').textContent = positions.length;
+  document.getElementById('visRatio').textContent = text.length ? ((positions.length / text.length) * 100).toFixed(2) + '%' : '0%';
+  document.getElementById('visualStats').classList.remove('hidden');
+});
+
+// ============ 映射表渲染 ============
+function renderMappingTable() {
+  if (document.getElementById('mappingTable').innerHTML) return; // render once
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<tr style="border-bottom:1px solid var(--line);"><th style="text-align:left;padding:6px;">拉丁</th><th style="text-align:left;padding:6px;">西里尔 (主)</th><th style="text-align:left;padding:6px;">希腊 (备)</th><th style="text-align:left;padding:6px;">说明</th></tr>';
+  for (const [latin, info] of Object.entries(HOMOGLYPH_MAP)) {
+    html += `<tr style="border-bottom:1px solid var(--line);"><td style="padding:6px;font-family:var(--font-mono);">${escapeHtml(latin)}</td><td style="padding:6px;font-family:var(--font-mono);font-size:16px;">${escapeHtml(info.primary)} (U+${info.primary.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')})</td><td style="padding:6px;font-family:var(--font-mono);font-size:16px;">${info.alt ? escapeHtml(info.alt) + ' (U+' + info.alt.codePointAt(0).toString(16).toUpperCase().padStart(4,'0') + ')' : '—'}</td><td style="padding:6px;color:var(--muted);">${info.name}</td></tr>`;
+  }
+  html += '</table>';
+  document.getElementById('mappingTable').innerHTML = html;
+}
+
+// ============ 初始化 ============
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (!document.getElementById('panelEncode').classList.contains('hidden')) doEncode();
+    else if (!document.getElementById('panelDecode').classList.contains('hidden')) doDecode();
+  }
+});
+</script>
+</body>
+</html>

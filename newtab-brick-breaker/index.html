@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+  <title>新标签页弹球</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d0d0f;
+      overflow: hidden;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      color: #e0e0e0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #game {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+    }
+    #ui {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+    }
+    .score {
+      font-size: 20px;
+      font-weight: 500;
+      color: #a0a0a0;
+    }
+    .controls-hint {
+      font-size: 14px;
+      color: #606060;
+      text-align: center;
+    }
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(13,13,15,0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      pointer-events: auto;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h1 {
+      font-size: 32px;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+    .overlay p {
+      font-size: 16px;
+      color: #808080;
+    }
+    .btn {
+      padding: 10px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      color: #0d0d0f;
+      background: #e0e0e0;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: background 0.12s;
+    }
+    .btn:hover { background: #f0f0f0; }
+    .btn:active { background: #d0d0d0; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="ui">
+    <div class="score">分数: <span id="score">0</span></div>
+    <div class="controls-hint">空格发射球 | 鼠标/触摸移动挡板</div>
+  </div>
+  <div id="start-overlay" class="overlay">
+    <h1>新标签页弹球</h1>
+    <p>按空格发射球，击碎所有砖块</p>
+    <button class="btn" id="start-btn">开始游戏</button>
+  </div>
+  <div id="gameover-overlay" class="overlay hidden">
+    <h1 id="gameover-title">游戏结束</h1>
+    <p>最终分数: <span id="final-score">0</span></p>
+    <button class="btn" id="restart-btn">重置游戏</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const finalScoreEl = document.getElementById('final-score');
+    const startOverlay = document.getElementById('start-overlay');
+    const gameoverOverlay = document.getElementById('gameover-overlay');
+    const gameoverTitle = document.getElementById('gameover-title');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+
+    let width, height;
+    let score = 0;
+    let gameState = 'start'; // start, playing, gameover
+    const paddleWidth = 100;
+    const paddleHeight = 12;
+    const ballRadius = 6;
+    const brickRows = 5;
+    const brickCols = 9;
+    const brickGap = 4;
+    let bricks = [];
+    let paddleX, paddleY;
+    let ball = { x: 0, y: 0, dx: 0, dy: 0, active: false };
+    const brickHeight = 20;
+    const brickWidth = (width - (brickCols + 1) * brickGap) / brickCols;
+    const paddleYOffset = 60;
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+      paddleY = height - paddleYOffset;
+      initBricks();
+    }
+
+    function initBricks() {
+      bricks = [];
+      const totalWidth = brickCols * brickWidth + (brickCols + 1) * brickGap;
+      const startX = (width - totalWidth) / 2;
+      const startY = 60;
+      for (let r = 0; r < brickRows; r++) {
+        for (let c = 0; c < brickCols; c++) {
+          bricks.push({
+            x: startX + c * (brickWidth + brickGap),
+            y: startY + r * (brickHeight + brickGap),
+            w: brickWidth,
+            h: brickHeight,
+            active: true
+          });
+        }
+      }
+    }
+
+    function resetGame() {
+      score = 0;
+      scoreEl.textContent = '0';
+      gameState = 'playing';
+      paddleX = (width - paddleWidth) / 2;
+      ball = {
+        x: width / 2,
+        y: paddleY - ballRadius - 1,
+        dx: 0,
+        dy: 0,
+        active: false
+      };
+      startOverlay.classList.add('hidden');
+      gameoverOverlay.classList.add('hidden');
+    }
+
+    function launchBall() {
+      if (gameState === 'playing' && !ball.active) {
+        ball.active = true;
+        ball.dx = (Math.random() - 0.5) * 8;
+        ball.dy = -5;
+      }
+    }
+
+    function update() {
+      if (gameState !== 'playing') return;
+      if (!ball.active) {
+        ball.x = paddleX + paddleWidth / 2;
+        ball.y = paddleY - ballRadius - 1;
+        return;
+      }
+
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      if (ball.x - ballRadius < 0) {
+        ball.x = ballRadius;
+        ball.dx *= -1;
+      }
+      if (ball.x + ballRadius > width) {
+        ball.x = width - ballRadius;
+        ball.dx *= -1;
+      }
+      if (ball.y - ballRadius < 0) {
+        ball.y = ballRadius;
+        ball.dy *= -1;
+      }
+      if (ball.y + ballRadius > height) {
+        gameState = 'gameover';
+        gameoverTitle.textContent = '游戏结束';
+        finalScoreEl.textContent = score;
+        gameoverOverlay.classList.remove('hidden');
+        return;
+      }
+
+      const paddleLeft = paddleX;
+      const paddleRight = paddleX + paddleWidth;
+      const paddleTop = paddleY;
+      const paddleBottom = paddleY + paddleHeight;
+
+      if (ball.x + ballRadius > paddleLeft && ball.x - ballRadius < paddleRight &&
+          ball.y + ballRadius > paddleTop && ball.y - ballRadius < paddleBottom) {
+        ball.dy = -Math.abs(ball.dy);
+        const hitPos = (ball.x - paddleLeft) / paddleWidth;
+        ball.dx = (hitPos - 0.5) * 8;
+        ball.y = paddleTop - ballRadius - 1;
+      }
+
+      for (let i = 0; i < bricks.length; i++) {
+        const b = bricks[i];
+        if (!b.active) continue;
+        if (ball.x + ballRadius > b.x && ball.x - ballRadius < b.x + b.w &&
+            ball.y + ballRadius > b.y && ball.y - ballRadius < b.y + b.h) {
+          b.active = false;
+          ball.dy *= -1;
+          score += 10;
+          scoreEl.textContent = score;
+          break;
+        }
+      }
+
+      const remaining = bricks.filter(b => b.active).length;
+      if (remaining === 0) {
+        gameState = 'gameover';
+        gameoverTitle.textContent = '胜利!';
+        finalScoreEl.textContent = score;
+        gameoverOverlay.classList.remove('hidden');
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = '#0d0d0f';
+      ctx.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < bricks.length; i++) {
+        const b = bricks[i];
+        if (!b.active) continue;
+        ctx.fillStyle = '#3a3a4a';
+        ctx.beginPath();
+        ctx.roundRect(b.x, b.y, b.w, b.h, 4);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#e0e0e0';
+      ctx.beginPath();
+      ctx.roundRect(paddleX, paddleY, paddleWidth, paddleHeight, 6);
+      ctx.fill();
+
+      if (gameState === 'playing' && ball.active) {
+        ctx.fillStyle = '#e0e0e0';
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function onPointerMove(e) {
+      e.preventDefault();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      paddleX = clientX - paddleWidth / 2;
+      if (paddleX < 0) paddleX = 0;
+      if (paddleX + paddleWidth > width) paddleX = width - paddleWidth;
+    }
+
+    function onKeyDown(e) {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (gameState === 'start') {
+          resetGame();
+        } else if (gameState === 'playing') {
+          launchBall();
+        } else if (gameState === 'gameover') {
+          resetGame();
+        }
+      }
+    }
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('keydown', onKeyDown);
+    startBtn.addEventListener('click', resetGame);
+    restartBtn.addEventListener('click', resetGame);
+
+    resize();
+    loop();
+  </script>
+</body>
+</html>

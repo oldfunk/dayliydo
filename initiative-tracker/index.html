@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>战斗回合追踪器 · Initiative Tracker</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161922;
+    --bg3: #1e2230;
+    --fg: #e8e6e3;
+    --fg2: #a0a3ad;
+    --fg3: #6b6e7a;
+    --accent: #c9a84c;
+    --accent2: #8b6914;
+    --yes: #4caf7d;
+    --no: #c94c4c;
+    --mid: #c9a84c;
+    --border: #2a2e3d;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    color: var(--accent);
+  }
+  .subtitle {
+    color: var(--fg2);
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+  }
+  .container {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .panel-title {
+    font-size: 0.8rem;
+    color: var(--fg3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+  /* 圆形时间环 */
+  .ring-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .ring-svg {
+    width: 200px;
+    height: 200px;
+    transform: rotate(-90deg);
+  }
+  .ring-bg {
+    fill: none;
+    stroke: var(--bg3);
+    stroke-width: 8;
+  }
+  .ring-fg {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.1s linear;
+  }
+  .ring-text {
+    font-size: 2rem;
+    font-weight: 700;
+    fill: var(--fg);
+    transform: rotate(90deg);
+    transform-origin: center;
+    text-anchor: middle;
+  }
+  .ring-label {
+    font-size: 0.75rem;
+    fill: var(--fg3);
+    transform: rotate(90deg);
+    transform-origin: center;
+    text-anchor: middle;
+  }
+  .current-turn {
+    text-align: center;
+  }
+  .current-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .current-init {
+    font-size: 0.85rem;
+    color: var(--fg2);
+    margin-top: 4px;
+  }
+  /* 控制按钮 */
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  button {
+    background: var(--bg3);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  button:hover {
+    background: var(--border);
+    border-color: var(--fg3);
+  }
+  button.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  button.primary:hover {
+    background: var(--accent2);
+  }
+  button.danger {
+    color: var(--no);
+  }
+  button.danger:hover {
+    background: var(--no);
+    color: var(--fg);
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  /* 角色列表 */
+  .char-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .char-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .char-item.active {
+    border-color: var(--accent);
+    background: rgba(201, 168, 76, 0.08);
+  }
+  .char-item.dead {
+    opacity: 0.4;
+  }
+  .char-init {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .char-item.active .char-init {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .char-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .char-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .char-hp {
+    font-size: 0.8rem;
+    color: var(--fg2);
+    margin-top: 2px;
+  }
+  .char-effects {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .effect-tag {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--fg2);
+  }
+  .effect-tag.decaying {
+    color: var(--no);
+    border-color: var(--no);
+  }
+  .char-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .char-actions button {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+  /* 添加角色表单 */
+  .add-form {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px auto;
+    gap: 8px;
+    align-items: end;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .form-group label {
+    font-size: 0.75rem;
+    color: var(--fg3);
+  }
+  .form-group input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--fg);
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus {
+    border-color: var(--accent);
+  }
+  /* 设置 */
+  .settings {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .setting-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--fg2);
+  }
+  .setting-item input {
+    width: 60px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--fg);
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    outline: none;
+    text-align: center;
+  }
+  /* 空状态 */
+  .empty {
+    text-align: center;
+    color: var(--fg3);
+    padding: 40px 20px;
+    font-size: 0.9rem;
+  }
+  /* 响应式 */
+  @media (max-width: 600px) {
+    .add-form {
+      grid-template-columns: 1fr 1fr;
+    }
+    .char-item {
+      flex-wrap: wrap;
+    }
+    .char-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+</style>
+</head>
+<body>
+  <h1>战斗回合追踪器</h1>
+  <p class="subtitle">圆形时间环 · 效果衰减 · 自动轮转</p>
+
+  <div class="container">
+    <!-- 设置 -->
+    <div class="panel">
+      <div class="panel-title">设置</div>
+      <div class="settings">
+        <div class="setting-item">
+          <span>回合时长</span>
+          <input type="number" id="roundDuration" value="6" min="1" max="60">
+          <span>秒</span>
+        </div>
+        <div class="setting-item">
+          <span>效果衰减</span>
+          <span style="color:var(--fg3)">每回合 -1 持续</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 圆形时间环 -->
+    <div class="panel">
+      <div class="panel-title">当前回合</div>
+      <div class="ring-area">
+        <svg class="ring-svg" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="90"/>
+          <circle class="ring-fg" id="ringFg" cx="100" cy="100" r="90"/>
+          <text class="ring-text" id="ringText" x="100" y="95">--</text>
+          <text class="ring-label" id="ringLabel" x="100" y="120">等待开始</text>
+        </svg>
+        <div class="current-turn">
+          <div class="current-name" id="currentName">--</div>
+          <div class="current-init" id="currentInit">先攻 --</div>
+        </div>
+        <div class="controls">
+          <button class="primary" id="btnStart">开始</button>
+          <button id="btnNext">下一位</button>
+          <button id="btnReset" class="danger">重置</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 角色列表 -->
+    <div class="panel">
+      <div class="panel-title">角色列表</div>
+      <div class="char-list" id="charList">
+        <div class="empty">暂无角色，请添加</div>
+      </div>
+    </div>
+
+    <!-- 添加角色 -->
+    <div class="panel">
+      <div class="panel-title">添加角色</div>
+      <div class="add-form">
+        <div class="form-group">
+          <label>名称</label>
+          <input type="text" id="inpName" placeholder="角色名" maxlength="20">
+        </div>
+        <div class="form-group">
+          <label>先攻</label>
+          <input type="number" id="inpInit" placeholder="0" min="-20" max="50">
+        </div>
+        <div class="form-group">
+          <label>HP</label>
+          <input type="number" id="inpHP" placeholder="10" min="1" max="999">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button id="btnAdd">添加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===== 状态 =====
+  var state = {
+    characters: [],
+    currentIndex: -1,
+    roundDuration: 6,
+    timeLeft: 0,
+    timerId: null,
+    running: false
+  };
+
+  // ===== DOM =====
+  var $ = function(id) { return document.getElementById(id); };
+  var ringFg = $('ringFg');
+  var ringText = $('ringText');
+  var ringLabel = $('ringLabel');
+  var currentName = $('currentName');
+  var currentInit = $('currentInit');
+  var charList = $('charList');
+  var btnStart = $('btnStart');
+  var btnNext = $('btnNext');
+  var btnReset = $('btnReset');
+  var btnAdd = $('btnAdd');
+  var inpName = $('inpName');
+  var inpInit = $('inpInit');
+  var inpHP = $('inpHP');
+  var roundDurationInput = $('roundDuration');
+
+  // ===== 工具 =====
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function save() {
+    try {
+      localStorage.setItem('initiative-tracker', JSON.stringify({
+        characters: state.characters,
+        roundDuration: state.roundDuration
+      }));
+    } catch (e) {}
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem('initiative-tracker');
+      if (raw) {
+        var data = JSON.parse(raw);
+        state.characters = data.characters || [];
+        state.roundDuration = data.roundDuration || 6;
+        roundDurationInput.value = state.roundDuration;
+      }
+    } catch (e) {}
+  }
+
+  // ===== 圆形环 =====
+  var CIRCUMFERENCE = 2 * Math.PI * 90;
+  ringFg.style.strokeDasharray = CIRCUMFERENCE;
+  ringFg.style.strokeDashoffset = CIRCUMFERENCE;
+
+  function updateRing() {
+    var ratio = state.roundDuration > 0 ? state.timeLeft / state.roundDuration : 0;
+    ringFg.style.strokeDashoffset = CIRCUMFERENCE * (1 - ratio);
+    ringText.textContent = Math.ceil(state.timeLeft);
+  }
+
+  // ===== 渲染角色列表 =====
+  function renderList() {
+    if (state.characters.length === 0) {
+      charList.innerHTML = '<div class="empty">暂无角色，请添加</div>';
+      return;
+    }
+    charList.innerHTML = '';
+    var sorted = state.characters.slice().sort(function(a, b) { return b.init - a.init; });
+    for (var i = 0; i < sorted.length; i++) {
+      (function(c, idx) {
+        var div = document.createElement('div');
+        div.className = 'char-item';
+        if (idx === state.currentIndex) div.classList.add('active');
+        if (c.hp <= 0) div.classList.add('dead');
+
+        var initDiv = document.createElement('div');
+        initDiv.className = 'char-init';
+        initDiv.textContent = c.init;
+
+        var infoDiv = document.createElement('div');
+        infoDiv.className = 'char-info';
+
+        var nameDiv = document.createElement('div');
+        nameDiv.className = 'char-name';
+        nameDiv.textContent = c.name;
+
+        var hpDiv = document.createElement('div');
+        hpDiv.className = 'char-hp';
+        hpDiv.textContent = 'HP: ' + c.hp;
+
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(hpDiv);
+
+        if (c.effects && c.effects.length > 0) {
+          var effectsDiv = document.createElement('div');
+          effectsDiv.className = 'char-effects';
+          for (var j = 0; j < c.effects.length; j++) {
+            (function(eff) {
+              var tag = document.createElement('span');
+              tag.className = 'effect-tag';
+              if (eff.duration <= 1) tag.classList.add('decaying');
+              tag.textContent = eff.name + '(' + eff.duration + ')';
+              effectsDiv.appendChild(tag);
+            })(c.effects[j]);
+          }
+          infoDiv.appendChild(effectsDiv);
+        }
+
+        var actionsDiv = document.createElement('div');
+        actionsDiv.className = 'char-actions';
+
+        var btnHp = document.createElement('button');
+        btnHp.textContent = 'HP-';
+        btnHp.onclick = function() { c.hp = Math.max(0, c.hp - 1); save(); renderList(); };
+
+        var btnAddEff = document.createElement('button');
+        btnAddEff.textContent = '+效果';
+        btnAddEff.onclick = function() {
+          var name = prompt('效果名称：');
+          if (!name) return;
+          var dur = parseInt(prompt('持续回合数：', '3'), 10);
+          if (isNaN(dur) || dur < 1) dur = 3;
+          if (!c.effects) c.effects = [];
+          c.effects.push({ name: name, duration: dur });
+          save();
+          renderList();
+        };
+
+        var btnDel = document.createElement('button');
+        btnDel.textContent = '删除';
+        btnDel.className = 'danger';
+        btnDel.onclick = function() {
+          if (confirm('删除 ' + c.name + '？')) {
+            state.characters.splice(state.characters.indexOf(c), 1);
+            if (state.currentIndex >= state.characters.length) {
+              state.currentIndex = state.characters.length - 1;
+            }
+            save();
+            renderList();
+            updateCurrentDisplay();
+          }
+        };
+
+        actionsDiv.appendChild(btnHp);
+        actionsDiv.appendChild(btnAddEff);
+        actionsDiv.appendChild(btnDel);
+
+        div.appendChild(initDiv);
+        div.appendChild(infoDiv);
+        div.appendChild(actionsDiv);
+        charList.appendChild(div);
+      })(sorted[i], i);
+    }
+  }
+
+  // ===== 当前显示 =====
+  function updateCurrentDisplay() {
+    if (state.currentIndex >= 0 && state.currentIndex < state.characters.length) {
+      var c = state.characters[state.currentIndex];
+      currentName.textContent = c.name;
+      currentInit.textContent = '先攻 ' + c.init;
+    } else {
+      currentName.textContent = '--';
+      currentInit.textContent = '先攻 --';
+    }
+  }
+
+  // ===== 计时器 =====
+  function tick() {
+    state.timeLeft -= 0.1;
+    if (state.timeLeft <= 0) {
+      nextTurn();
+    } else {
+      updateRing();
+    }
+  }
+
+  function startTimer() {
+    if (state.timerId) return;
+    state.running = true;
+    btnStart.textContent = '暂停';
+    state.timerId = setInterval(tick, 100);
+  }
+
+  function stopTimer() {
+    state.running = false;
+    btnStart.textContent = '开始';
+    if (state.timerId) {
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
+  }
+
+  // ===== 回合轮转 =====
+  function nextTurn() {
+    if (state.characters.length === 0) return;
+
+    // 衰减当前角色效果
+    if (state.currentIndex >= 0 && state.currentIndex < state.characters.length) {
+      var c = state.characters[state.currentIndex];
+      if (c.effects && c.effects.length > 0) {
+        for (var i = c.effects.length - 1; i >= 0; i--) {
+          c.effects[i].duration--;
+          if (c.effects[i].duration <= 0) {
+            c.effects.splice(i, 1);
+          }
+        }
+      }
+    }
+
+    // 轮转到下一个存活角色
+    var alive = state.characters.filter(function(c) { return c.hp > 0; });
+    if (alive.length === 0) {
+      stopTimer();
+      ringLabel.textContent = '全员阵亡';
+      return;
+    }
+
+    state.currentIndex++;
+    if (state.currentIndex >= state.characters.length) {
+      state.currentIndex = 0;
+    }
+    // 跳过阵亡角色
+    while (state.characters[state.currentIndex].hp <= 0) {
+      state.currentIndex++;
+      if (state.currentIndex >= state.characters.length) {
+        state.currentIndex = 0;
+      }
+    }
+
+    state.timeLeft = state.roundDuration;
+    updateRing();
+    updateCurrentDisplay();
+    renderList();
+    save();
+  }
+
+  // ===== 事件 =====
+  btnStart.onclick = function() {
+    if (state.running) {
+      stopTimer();
+    } else {
+      if (state.characters.length === 0) {
+        alert('请先添加角色');
+        return;
+      }
+      if (state.currentIndex < 0) {
+        state.currentIndex = 0;
+        state.timeLeft = state.roundDuration;
+        updateRing();
+        updateCurrentDisplay();
+        renderList();
+      }
+      startTimer();
+    }
+  };
+
+  btnNext.onclick = function() {
+    if (state.characters.length === 0) return;
+    if (state.currentIndex < 0) {
+      state.currentIndex = 0;
+      state.timeLeft = state.roundDuration;
+      updateRing();
+      updateCurrentDisplay();
+      renderList();
+    } else {
+      nextTurn();
+    }
+  };
+
+  btnReset.onclick = function() {
+    stopTimer();
+    state.currentIndex = -1;
+    state.timeLeft = 0;
+    updateRing();
+    updateCurrentDisplay();
+    renderList();
+    ringLabel.textContent = '等待开始';
+  };
+
+  btnAdd.onclick = function() {
+    var name = inpName.value.trim();
+    if (!name) {
+      alert('请输入角色名');
+      return;
+    }
+    var init = parseInt(inpInit.value, 10);
+    if (isNaN(init)) init = 0;
+    var hp = parseInt(inpHP.value, 10);
+    if (isNaN(hp) || hp < 1) hp = 10;
+
+    state.characters.push({
+      name: name,
+      init: init,
+      hp: hp,
+      effects: []
+    });
+
+    inpName.value = '';
+    inpInit.value = '';
+    inpHP.value = '';
+    inpName.focus();
+
+    save();
+    renderList();
+  };
+
+  roundDurationInput.onchange = function() {
+    var v = parseInt(roundDurationInput.value, 10);
+    if (isNaN(v) || v < 1) v = 1;
+    if (v > 60) v = 60;
+    state.roundDuration = v;
+    roundDurationInput.value = v;
+    if (!state.running) {
+      state.timeLeft = v;
+      updateRing();
+    }
+    save();
+  };
+
+  // ===== 初始化 =====
+  load();
+  renderList();
+  updateRing();
+  updateCurrentDisplay();
+})();
+</script>
+</body>
+</html>

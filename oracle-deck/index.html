@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神谕卡牌 · Oracle Deck</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161922;
+    --bg3: #1e2230;
+    --fg: #e8e6e3;
+    --fg2: #a0a3ad;
+    --fg3: #6b6e7a;
+    --accent: #c9a84c;
+    --accent2: #8b6914;
+    --yes: #4caf7d;
+    --no: #c94c4c;
+    --mid: #c9a84c;
+    --border: #2a2e3d;
+    --radius: 12px;
+    --card-w: 280px;
+    --card-h: 400px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    color: var(--accent);
+  }
+  .subtitle {
+    color: var(--fg2);
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+  }
+  .container {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .panel-title {
+    font-size: 0.8rem;
+    color: var(--fg3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+  .question-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    font-size: 1rem;
+    padding: 12px 16px;
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .question-input:focus { border-color: var(--accent); }
+  .question-input::placeholder { color: var(--fg3); }
+  .type-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .type-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--fg2);
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .type-btn:hover { border-color: var(--accent); color: var(--fg); }
+  .type-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+  }
+  .draw-btn {
+    width: 100%;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: var(--bg);
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+  }
+  .draw-btn:hover { background: #d4b55e; transform: translateY(-1px); }
+  .draw-btn:active { transform: translateY(0); }
+  .draw-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .card-stage {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(var(--card-h) + 40px);
+    perspective: 1200px;
+  }
+  .card {
+    width: var(--card-w);
+    height: var(--card-h);
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+  .card.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .card-back {
+    background: linear-gradient(135deg, #1a1d2e 0%, #252840 100%);
+    border: 2px solid var(--accent2);
+  }
+  .card-back-pattern {
+    width: 80%;
+    height: 80%;
+    border: 1px solid var(--accent2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: var(--accent);
+  }
+  .card-front {
+    background: linear-gradient(135deg, #1e2230 0%, #252a3a 100%);
+    border: 2px solid var(--accent);
+    transform: rotateY(180deg);
+  }
+  .card-front.yes { border-color: var(--yes); }
+  .card-front.no { border-color: var(--no); }
+  .card-front.mid { border-color: var(--mid); }
+  .card-symbol {
+    font-size: 3.5rem;
+    margin-bottom: 16px;
+  }
+  .card-front.yes .card-symbol { color: var(--yes); }
+  .card-front.no .card-symbol { color: var(--no); }
+  .card-front.mid .card-symbol { color: var(--mid); }
+  .card-label {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .card-front.yes .card-label { color: var(--yes); }
+  .card-front.no .card-label { color: var(--no); }
+  .card-front.mid .card-label { color: var(--mid); }
+  .card-desc {
+    font-size: 0.9rem;
+    color: var(--fg2);
+    line-height: 1.6;
+  }
+  .card-weight {
+    margin-top: 16px;
+    font-size: 0.75rem;
+    color: var(--fg3);
+  }
+  .history-panel {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .history-dot.yes { background: var(--yes); }
+  .history-dot.no { background: var(--no); }
+  .history-dot.mid { background: var(--mid); }
+  .history-q {
+    flex: 1;
+    color: var(--fg2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-a {
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .history-a.yes { color: var(--yes); }
+  .history-a.no { color: var(--no); }
+  .history-a.mid { color: var(--mid); }
+  .fate-meter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .fate-label {
+    font-size: 0.8rem;
+    color: var(--fg3);
+    flex-shrink: 0;
+  }
+  .fate-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .fate-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .fate-fill.yes { background: var(--yes); }
+  .fate-fill.no { background: var(--no); }
+  .fate-value {
+    font-size: 0.8rem;
+    color: var(--fg2);
+    flex-shrink: 0;
+    min-width: 40px;
+    text-align: right;
+  }
+  .deck-editor {
+    margin-top: 12px;
+  }
+  .deck-textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    font-size: 0.85rem;
+    padding: 12px;
+    min-height: 120px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    line-height: 1.8;
+  }
+  .deck-textarea:focus { border-color: var(--accent); }
+  .deck-hint {
+    font-size: 0.75rem;
+    color: var(--fg3);
+    margin-top: 6px;
+  }
+  .btn-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .btn-small {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--fg2);
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--fg); }
+  .btn-small.danger:hover { border-color: var(--no); color: var(--no); }
+  .empty-state {
+    color: var(--fg3);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 40px 0;
+  }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 600px) {
+    .two-col { grid-template-columns: 1fr; }
+    :root { --card-w: 240px; --card-h: 340px; }
+  }
+  .fade-in {
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .shake {
+    animation: shake 0.5s ease;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+</style>
+</head>
+<body>
+
+<h1>神谕卡牌</h1>
+<p class="subtitle">TRPG 命运判定工具 · 三级递进神谕 · 自定义牌组</p>
+
+<div class="container">
+  <!-- 问题输入 -->
+  <div class="panel">
+    <div class="panel-title">提出你的问题</div>
+    <textarea class="question-input" id="questionInput" placeholder="例如：前方森林中是否有埋伏？"></textarea>
+    <div class="type-selector" id="typeSelector">
+      <button class="type-btn active" data-type="combat">战斗</button>
+      <button class="type-btn" data-type="explore">探索</button>
+      <button class="type-btn" data-type="social">社交</button>
+      <button class="type-btn" data-type="fate">命运</button>
+    </div>
+  </div>
+
+  <!-- 抽牌区 -->
+  <div class="panel">
+    <div class="panel-title">神谕之牌</div>
+    <div class="card-stage" id="cardStage">
+      <div class="empty-state" id="emptyState">提出问题，点击下方按钮抽取神谕</div>
+    </div>
+    <button class="draw-btn" id="drawBtn" disabled>抽取神谕</button>
+  </div>
+
+  <!-- 命运倾向 -->
+  <div class="panel">
+    <div class="panel-title">命运倾向</div>
+    <div class="fate-meter">
+      <span class="fate-label">否定</span>
+      <div class="fate-bar"><div class="fate-fill no" id="fateBarNo" style="width:50%"></div></div>
+      <span class="fate-value" id="fateValue">50:50</span>
+      <div class="fate-bar"><div class="fate-fill yes" id="fateBarYes" style="width:50%"></div></div>
+      <span class="fate-label">肯定</span>
+    </div>
+  </div>
+
+  <!-- 历史记录 -->
+  <div class="panel">
+    <div class="panel-title">神谕记录</div>
+    <div class="history-panel" id="historyPanel">
+      <div class="empty-state">暂无记录</div>
+    </div>
+  </div>
+
+  <!-- 牌组编辑 -->
+  <div class="panel">
+    <div class="panel-title">自定义牌组</div>
+    <div class="deck-editor">
+      <textarea class="deck-textarea" id="deckTextarea" placeholder="每行一张牌，格式：符号|名称|描述|权重(1-10)"></textarea>
+      <div class="deck-hint">默认牌组已内置，编辑后点击"应用牌组"生效。权重越高越容易被抽中。</div>
+      <div class="btn-row">
+        <button class="btn-small" id="applyDeckBtn">应用牌组</button>
+        <button class="btn-small danger" id="resetDeckBtn">恢复默认</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // --- 默认牌组 ---
+  var DEFAULT_DECK = [
+    { symbol: '☀', name: '光明', desc: '事情将朝着积极的方向发展，前路清晰可见。', weight: 5, align: 'yes' },
+    { symbol: '☾', name: '暗影', desc: '危险或困难隐藏在暗处，需要谨慎行事。', weight: 5, align: 'no' },
+    { symbol: '⚖', name: '平衡', desc: '事物处于微妙的平衡中，你的选择将决定走向。', weight: 4, align: 'mid' },
+    { symbol: '⚔', name: '冲突', desc: '对抗不可避免，准备迎接挑战。', weight: 4, align: 'no' },
+    { symbol: '🛡', name: '守护', desc: '保护的力量在帮助你，暂时安全。', weight: 4, align: 'yes' },
+    { symbol: '🔮', name: '迷雾', desc: '真相被遮蔽，更多信息才能做出判断。', weight: 3, align: 'mid' },
+    { symbol: '🌟', name: '转机', desc: '意外的机遇即将出现，保持警觉。', weight: 3, align: 'yes' },
+    { symbol: '💀', name: '终结', desc: '某个篇章即将结束，新的开始也在酝酿。', weight: 2, align: 'no' },
+    { symbol: '🗝', name: '启示', desc: '关键的线索就在眼前，仔细观察。', weight: 3, align: 'yes' },
+    { symbol: '🌊', name: '洪流', desc: '大势不可挡，顺势而为是上策。', weight: 3, align: 'mid' },
+    { symbol: '🔥', name: '烈焰', desc: '激情与毁灭并存，行动将带来改变。', weight: 3, align: 'mid' },
+    { symbol: '❄', name: '冰封', desc: '停滞与等待，时机尚未成熟。', weight: 2, align: 'no' }
+  ];
+
+  // --- 问题类型修正 ---
+  var TYPE_MODIFIERS = {
+    combat:  { yes: 0,  no: 0,  mid: 0 },
+    explore: { yes: 1,  no: -1, mid: 0 },
+    social:  { yes: 1,  no: 0,  mid: -1 },
+    fate:    { yes: -1, no: -1, mid: 2 }
+  };
+
+  // --- 状态 ---
+  var deck = [];
+  var history = [];
+  var fateScore = 0; // 正数偏肯定，负数偏否定
+  var currentType = 'combat';
+  var isFlipped = false;
+
+  // --- DOM ---
+  var questionInput = document.getElementById('questionInput');
+  var typeSelector = document.getElementById('typeSelector');
+  var drawBtn = document.getElementById('drawBtn');
+  var cardStage = document.getElementById('cardStage');
+  var emptyState = document.getElementById('emptyState');
+  var historyPanel = document.getElementById('historyPanel');
+  var fateBarNo = document.getElementById('fateBarNo');
+  var fateBarYes = document.getElementById('fateBarYes');
+  var fateValue = document.getElementById('fateValue');
+  var deckTextarea = document.getElementById('deckTextarea');
+  var applyDeckBtn = document.getElementById('applyDeckBtn');
+  var resetDeckBtn = document.getElementById('resetDeckBtn');
+
+  // --- 初始化 ---
+  function init() {
+    deck = loadDeck();
+    if (!deck || deck.length === 0) {
+      deck = DEFAULT_DECK.slice();
+      saveDeck();
+    }
+    renderDeckTextarea();
+    updateFateUI();
+    bindEvents();
+  }
+
+  function loadDeck() {
+    try {
+      var raw = localStorage.getItem('oracle_deck');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  function saveDeck() {
+    try {
+      localStorage.setItem('oracle_deck', JSON.stringify(deck));
+    } catch (e) {}
+  }
+
+  function loadHistory() {
+    try {
+      var raw = localStorage.getItem('oracle_history');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return [];
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem('oracle_history', JSON.stringify(history.slice(0, 50)));
+    } catch (e) {}
+  }
+
+  function renderDeckTextarea() {
+    deckTextarea.value = deck.map(function(c) {
+      return c.symbol + '|' + c.name + '|' + c.desc + '|' + c.weight;
+    }).join('\n');
+  }
+
+  // --- 事件绑定 ---
+  function bindEvents() {
+    questionInput.addEventListener('input', function() {
+      drawBtn.disabled = questionInput.value.trim().length === 0;
+    });
+
+    typeSelector.addEventListener('click', function(e) {
+      var btn = e.target.closest('.type-btn');
+      if (!btn) return;
+      typeSelector.querySelectorAll('.type-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      currentType = btn.dataset.type;
+    });
+
+    drawBtn.addEventListener('click', drawCard);
+    applyDeckBtn.addEventListener('click', applyDeck);
+    resetDeckBtn.addEventListener('click', resetDeck);
+  }
+
+  // --- 抽牌逻辑 ---
+  function drawCard() {
+    var question = questionInput.value.trim();
+    if (!question) return;
+
+    // 计算权重
+    var mod = TYPE_MODIFIERS[currentType];
+    var totalWeight = 0;
+    var weights = deck.map(function(card) {
+      var w = card.weight;
+      if (card.align === 'yes') w += mod.yes;
+      else if (card.align === 'no') w += mod.no;
+      else w += mod.mid;
+      w = Math.max(1, w);
+      totalWeight += w;
+      return w;
+    });
+
+    // 命运倾向修正
+    var fateModifier = fateScore * 0.3;
+    if (fateModifier !== 0) {
+      weights = weights.map(function(w, i) {
+        var card = deck[i];
+        if (card.align === 'yes') w = Math.max(1, w + fateModifier);
+        else if (card.align === 'no') w = Math.max(1, w - fateModifier);
+        return w;
+      });
+      totalWeight = weights.reduce(function(a, b) { return a + b; }, 0);
+    }
+
+    // 加权随机
+    var roll = Math.random() * totalWeight;
+    var idx = 0;
+    for (var i = 0; i < weights.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) { idx = i; break; }
+    }
+
+    var card = deck[idx];
+    showCard(card, question);
+    updateFate(card.align);
+    addHistory(question, card);
+  }
+
+  function showCard(card, question) {
+    emptyState.style.display = 'none';
+    cardStage.innerHTML = '';
+
+    var cardEl = document.createElement('div');
+    cardEl.className = 'card flipped';
+    cardEl.innerHTML =
+      '<div class="card-face card-back"><div class="card-back-pattern">☥</div></div>' +
+      '<div class="card-face card-front ' + card.align + '">' +
+        '<div class="card-symbol">' + escapeHtml(card.symbol) + '</div>' +
+        '<div class="card-label">' + escapeHtml(card.name) + '</div>' +
+        '<div class="card-desc">' + escapeHtml(card.desc) + '</div>' +
+        '<div class="card-weight">权重 ' + card.weight + ' · ' + getAlignLabel(card.align) + '</div>' +
+      '</div>';
+
+    cardStage.appendChild(cardEl);
+    isFlipped = true;
+
+    // 翻牌动画
+    setTimeout(function() {
+      cardEl.classList.add('flipped');
+    }, 50);
+
+    // 点击重新翻转
+    cardEl.addEventListener('click', function() {
+      cardEl.classList.toggle('flipped');
+    });
+  }
+
+  function getAlignLabel(align) {
+    if (align === 'yes') return '肯定';
+    if (align === 'no') return '否定';
+    return '中性';
+  }
+
+  function updateFate(align) {
+    if (align === 'yes') fateScore = Math.min(10, fateScore + 1);
+    else if (align === 'no') fateScore = Math.max(-10, fateScore - 1);
+    updateFateUI();
+  }
+
+  function updateFateUI() {
+    var yesPct = 50 + fateScore * 5;
+    yesPct = Math.max(10, Math.min(90, yesPct));
+    var noPct = 100 - yesPct;
+    fateBarYes.style.width = yesPct + '%';
+    fateBarNo.style.width = noPct + '%';
+    fateValue.textContent = Math.round(yesPct) + ':' + Math.round(noPct);
+  }
+
+  function addHistory(question, card) {
+    history.unshift({ q: question, card: card, time: Date.now() });
+    if (history.length > 50) history = history.slice(0, 50);
+    saveHistory();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (history.length === 0) {
+      historyPanel.innerHTML = '<div class="empty-state">暂无记录</div>';
+      return;
+    }
+    historyPanel.innerHTML = history.map(function(h) {
+      return '<div class="history-item fade-in">' +
+        '<span class="history-dot ' + h.card.align + '"></span>' +
+        '<span class="history-q" title="' + escapeHtml(h.q) + '">' + escapeHtml(h.q) + '</span>' +
+        '<span class="history-a ' + h.card.align + '">' + escapeHtml(h.card.name) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  // --- 牌组编辑 ---
+  function applyDeck() {
+    var lines = deckTextarea.value.trim().split('\n');
+    var newDeck = [];
+    for (var i = 0; i < lines.length; i++) {
+      var parts = lines[i].split('|');
+      if (parts.length >= 3) {
+        var weight = parseInt(parts[3], 10);
+        if (isNaN(weight) || weight < 1) weight = 5;
+        if (weight > 10) weight = 10;
+        newDeck.push({
+          symbol: parts[0].trim() || '?',
+          name: parts[1].trim() || '未知',
+          desc: parts[2].trim() || '无描述',
+          weight: weight,
+          align: guessAlign(parts[1].trim(), parts[2].trim())
+        });
+      }
+    }
+    if (newDeck.length > 0) {
+      deck = newDeck;
+      saveDeck();
+      // 视觉反馈
+      applyDeckBtn.textContent = '已应用 ✓';
+      setTimeout(function() { applyDeckBtn.textContent = '应用牌组'; }, 1500);
+    }
+  }
+
+  function guessAlign(name, desc) {
+    var text = name + desc;
+    var yesWords = ['光明', '守护', '转机', '启示', '希望', '胜利', '安全', '成功', '幸运'];
+    var noWords = ['暗影', '冲突', '终结', '冰封', '危险', '失败', '死亡', '陷阱', '诅咒'];
+    var yesCount = 0, noCount = 0;
+    yesWords.forEach(function(w) { if (text.indexOf(w) >= 0) yesCount++; });
+    noWords.forEach(function(w) { if (text.indexOf(w) >= 0) noCount++; });
+    if (yesCount > noCount) return 'yes';
+    if (noCount > yesCount) return 'no';
+    return 'mid';
+  }
+
+  function resetDeck() {
+    deck = DEFAULT_DECK.slice();
+    saveDeck();
+    renderDeckTextarea();
+    resetDeckBtn.textContent = '已恢复 ✓';
+    setTimeout(function() { resetDeckBtn.textContent = '恢复默认'; }, 1500);
+  }
+
+  // --- 工具函数 ---
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // --- 启动 ---
+  init();
+  history = loadHistory();
+  renderHistory();
+})();
+</script>
+</body>
+</html>

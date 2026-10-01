@@ -1,5 +1,11 @@
 # dayliydo — 灵感日志
 
+## 2026 年 10 月主题：TRPG 桌面工具
+计划 3 件作品：
+1. oracle-deck（神谕卡牌）—— 三级递进神谕 + 命运权重 + 自定义牌组
+2. initiative-tracker（战斗回合追踪器）—— 圆形时间环 + 效果衰减
+3. encounter-table（随机遭遇表）—— 加权随机 + 命运种子
+
 不再预填待办清单。每晚任务开始时强制联网调研（GitHub Trending / Hacker News / Reddit / Product Hunt / 独立开发者社区），现场寻找「工作轻量 + 简单 + 填补空白」的方向。
 
 ## 定题标准
@@ -20,6 +26,9 @@
 | 2026-08-31 | titlerun-game | 零宽 Unicode 隐写（文档标题栏载体） |
 | 2026-09-02 | url-stego-link | 零宽 Unicode 隐写（URL fragment 载体） |
 | 2026-09-04 | broadcast-constellation | Broadcast Channel API 跨标签页同步星座 |
+| 2026-09-08 | broadcast-particle-fountain | 确定性事件溯源：仅同步发射事件，各标签自运行物理引擎 |
+| 2026-09-10 | glyph-cipher | 同形字替换隐写（西里尔/希腊字母替换拉丁字母） |
+| 2026-10-01 | oracle-deck | 三级递进神谕 + 命运权重 + 自定义牌组 |
 
 --- 
 ## 灵感日志

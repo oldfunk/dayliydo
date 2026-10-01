@@ -21,7 +21,8 @@
 ||| URL 隐写链接 | [url-stego-link](url-stego-link/) | 把秘密藏在 URL hash 中，生成可分享的隐写链接 ||
 ||| 同形字密写 | [glyph-cipher](glyph-cipher/) | 同形字替换隐写（西里尔/希腊字母替换拉丁字母，文本长度不变） ||
 ||| 星图共振 | [broadcast-constellation](broadcast-constellation/) | Broadcast Channel API 跨标签页实时同步星座，零服务器 ||
-||| 跨标签粒子喷泉 | [broadcast-particle-fountain](broadcast-particle-fountain/) | 确定性事件溯源模拟：仅同步发射事件，各标签自运行物理引擎，零位置流量 ||
+||| 跨标签粒子喷泉 | [broadcast-particle-fountain](broadcast-particle-fountain/) | 确定性事件溯源模拟：仅同步发射事件，各标签自运行物理引擎，零位置流量 |
+| 神谕卡牌 | [oracle-deck](oracle-deck/) | TRPG 三级递进神谕判定，命运权重系统，自定义牌组 ||
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

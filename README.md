@@ -23,7 +23,8 @@
 ||| 星图共振 | [broadcast-constellation](broadcast-constellation/) | Broadcast Channel API 跨标签页实时同步星座，零服务器 ||
 ||| 跨标签粒子喷泉 | [broadcast-particle-fountain](broadcast-particle-fountain/) | 确定性事件溯源模拟：仅同步发射事件，各标签自运行物理引擎，零位置流量 |
 | 神谕卡牌 | [oracle-deck](oracle-deck/) | TRPG 三级递进神谕判定，命运权重系统，自定义牌组 |
-| 战斗回合追踪器 | [initiative-tracker](initiative-tracker/) | 圆形时间环 + 效果衰减 + 自动轮转 ||
+| 战斗回合追踪器 | [initiative-tracker](initiative-tracker/) | 圆形时间环 + 效果衰减 + 自动轮转 |
+| 命运种子遭遇表 | [encounter-table](encounter-table/) | 确定性种子重放 + 抉择改变后续权重，命运码可分享复现 |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

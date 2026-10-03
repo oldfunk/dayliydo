@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>命运种子遭遇表 · Fate-Seeded Encounter Table</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161922;
+    --bg3: #1e2230;
+    --bg4: #262b3b;
+    --fg: #e8e6e3;
+    --fg2: #a0a3ad;
+    --fg3: #6b6e7a;
+    --accent: #c9a84c;
+    --accent-dim: #8b6914;
+    --danger: #c94c4c;
+    --safe: #4caf7d;
+    --info: #5b8fd6;
+    --border: #2a2e3d;
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: radial-gradient(1200px 600px at 50% -10%, #1a1f2e 0%, var(--bg) 60%);
+    color: var(--fg);
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+  header { text-align: center; margin-bottom: 24px; }
+  h1 {
+    font-size: 1.55rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  .subtitle { color: var(--fg3); font-size: 0.82rem; margin-top: 6px; letter-spacing: 0.04em; }
+  .container { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .panel-title {
+    font-size: 0.72rem;
+    color: var(--fg3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type="text"], textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    padding: 9px 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+    min-width: 0;
+  }
+  input[type="text"]:focus, textarea:focus { border-color: var(--accent-dim); }
+  #seedInput { flex: 1; min-width: 140px; letter-spacing: 0.02em; }
+  button {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    padding: 9px 14px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .08s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--bg4); border-color: var(--accent-dim); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent-dim); border-color: var(--accent); color: #fff8e6; font-weight: 600; }
+  button.primary:hover { background: var(--accent); }
+  button.ghost { background: transparent; color: var(--fg2); }
+  button.ghost:hover { color: var(--fg); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .meta-line {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    color: var(--fg3);
+    font-family: var(--mono);
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .meta-line b { color: var(--fg2); font-weight: 500; }
+
+  /* 遭遇卡 */
+  .card {
+    background: linear-gradient(160deg, #1c2130 0%, #14171f 100%);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::after {
+    content: "";
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(201,168,76,.10), transparent 70%);
+    pointer-events: none;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--fg2);
+    background: var(--bg3);
+  }
+  .card-no { font-family: var(--mono); font-size: 0.72rem; color: var(--fg3); }
+  .card-title { font-size: 1.25rem; font-weight: 600; margin: 12px 0 8px; line-height: 1.35; }
+  .card-desc { color: var(--fg2); font-size: 0.9rem; line-height: 1.7; }
+  .dice-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .die {
+    flex: 1 1 150px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .die-label { font-size: 0.66rem; letter-spacing: 0.14em; color: var(--fg3); text-transform: uppercase; }
+  .die-value { font-size: 0.92rem; margin-top: 4px; color: var(--fg); display: flex; align-items: baseline; gap: 7px; }
+  .die-face {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    border: 1px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 0 4px;
+    line-height: 1.5;
+    flex: none;
+  }
+  .die-value .txt { color: var(--fg2); font-size: 0.86rem; }
+
+  /* 抉择 */
+  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .choice {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+    font-family: inherit;
+    color: var(--fg);
+  }
+  .choice:hover { border-color: var(--accent); background: var(--bg4); }
+  .choice .cn { font-size: 0.95rem; font-weight: 600; display: block; }
+  .choice .cd { font-size: 0.7rem; color: var(--fg3); margin-top: 3px; display: block; }
+
+  /* 权重可视化 */
+  .weights { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+  .wrow { display: grid; grid-template-columns: 62px 1fr 34px; align-items: center; gap: 10px; font-size: 0.76rem; }
+  .wrow .wn { color: var(--fg2); }
+  .wbar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .wbar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width .3s ease; }
+  .wrow .wv { font-family: var(--mono); color: var(--fg3); text-align: right; font-size: 0.72rem; }
+  .wrow.up .wv { color: var(--danger); }
+  .wrow.down .wv { color: var(--safe); }
+
+  .threat { margin-top: 14px; }
+  .threat-head { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--fg3); margin-bottom: 6px; letter-spacing: 0.08em; }
+  .threat-bar { height: 10px; border-radius: 5px; background: var(--bg); border: 1px solid var(--border); overflow: hidden; }
+  .threat-bar i { display: block; height: 100%; width: 0%; transition: width .35s ease, background .35s ease; }
+
+  /* 命运链 */
+  .chain { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+  .chain::-webkit-scrollbar { width: 8px; }
+  .chain::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+  .link {
+    display: grid;
+    grid-template-columns: 30px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 11px;
+    background: var(--bg3);
+    border-radius: 9px;
+    font-size: 0.84rem;
+    border-left: 2px solid var(--border);
+  }
+  .link .idx { font-family: var(--mono); color: var(--fg3); font-size: 0.72rem; }
+  .link .lt { color: var(--fg); }
+  .link .lt em { font-style: normal; color: var(--fg3); font-size: 0.76rem; margin-left: 6px; }
+  .link .lc { font-size: 0.72rem; color: var(--accent); border: 1px solid var(--accent-dim); border-radius: 5px; padding: 2px 7px; }
+  .empty { color: var(--fg3); font-size: 0.82rem; text-align: center; padding: 18px 0; }
+
+  /* 分享 */
+  .share-box { display: flex; flex-direction: column; gap: 8px; }
+  .share-code {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    word-break: break-all;
+    color: var(--fg2);
+    user-select: all;
+    line-height: 1.6;
+  }
+  .hint { font-size: 0.72rem; color: var(--fg3); line-height: 1.6; }
+  .ok { color: var(--safe); font-size: 0.72rem; }
+
+  /* 编辑器 */
+  details.editor summary {
+    cursor: pointer;
+    font-size: 0.72rem;
+    color: var(--fg3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    list-style: none;
+  }
+  details.editor summary::-webkit-details-marker { display: none; }
+  details.editor summary::before { content: "▸ "; color: var(--accent); }
+  details.editor[open] summary::before { content: "▾ "; }
+  details.editor[open] summary { margin-bottom: 14px; }
+  .cat-block { margin-bottom: 16px; }
+  .cat-name { font-size: 0.8rem; color: var(--accent); margin-bottom: 8px; letter-spacing: 0.06em; }
+  .entry-row { display: grid; grid-template-columns: 1fr 58px 34px; gap: 6px; margin-bottom: 6px; }
+  .entry-row input[type="text"] { font-size: 0.8rem; padding: 7px 9px; }
+  .entry-row input[type="number"] {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--fg); padding: 7px; font-size: 0.8rem; font-family: var(--mono);
+    text-align: center; outline: none; min-width: 0;
+  }
+  .entry-row input[type="number"]:focus { border-color: var(--accent-dim); }
+  .del {
+    background: transparent; border: 1px solid var(--border); color: var(--fg3);
+    border-radius: 8px; cursor: pointer; font-size: 0.9rem; line-height: 1; padding: 0;
+  }
+  .del:hover { color: var(--danger); border-color: var(--danger); background: transparent; }
+  footer { margin-top: 30px; font-size: 0.7rem; color: var(--fg3); text-align: center; line-height: 1.9; }
+  @media (max-width: 520px) {
+    h1 { font-size: 1.3rem; }
+    .die { flex: 1 1 100%; }
+    .link { grid-template-columns: 24px 1fr auto; font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>命运种子遭遇表</h1>
+  <div class="subtitle">同一种子长出同一条命运 · 每次抉择改变后续权重</div>
+</header>
+
+<div class="container">
+
+  <div class="panel">
+    <div class="panel-title"><span>命运种子</span><span id="drawCount">已抽 0 次</span></div>
+    <div class="row">
+      <input type="text" id="seedInput" placeholder="输入任意文字作为种子…" autocomplete="off" spellcheck="false">
+      <button id="btnRandomSeed" class="ghost">随机种子</button>
+      <button id="btnRestart">重开命运</button>
+    </div>
+    <div class="meta-line">
+      <span>种子指纹 <b id="seedHash">—</b></span>
+      <span>抉择序列 <b id="choiceSeq">（空）</b></span>
+    </div>
+  </div>
+
+  <div class="card" id="card">
+    <div class="card-head">
+      <span class="tag" id="cardCat">环境</span>
+      <span class="card-no" id="cardNo">#1</span>
+    </div>
+    <div class="card-title" id="cardTitle">—</div>
+    <div class="card-desc" id="cardDesc">—</div>
+    <div class="dice-row">
+      <div class="die">
+        <div class="die-label">态度</div>
+        <div class="die-value"><span class="die-face" id="f1">1</span><span class="txt" id="v1">—</span></div>
+      </div>
+      <div class="die">
+        <div class="die-label">细节</div>
+        <div class="die-value"><span class="die-face" id="f2">1</span><span class="txt" id="v2">—</span></div>
+      </div>
+      <div class="die">
+        <div class="die-label">收获</div>
+        <div class="die-value"><span class="die-face" id="f3">1</span><span class="txt" id="v3">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title"><span>你的抉择 · 决定下一次遭遇的权重</span></div>
+    <div class="choices" id="choices"></div>
+    <div class="weights" id="weights"></div>
+    <div class="threat">
+      <div class="threat-head"><span>危险度</span><span id="threatVal">0 / 10</span></div>
+      <div class="threat-bar"><i id="threatBar"></i></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title"><span>命运链</span><button id="btnUndo" class="ghost" style="font-size:.72rem;padding:4px 9px">撤销上一步</button></div>
+    <div class="chain" id="chain"><div class="empty">尚无记录。做出第一次抉择后，命运链会在此生长。</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title"><span>分享 / 复现</span></div>
+    <div class="share-box">
+      <div class="share-code" id="shareCode">—</div>
+      <div class="row">
+        <button id="btnCopy" class="primary">复制命运码</button>
+        <span class="hint" id="copyMsg"></span>
+      </div>
+      <textarea id="importBox" rows="2" placeholder="把别人的命运码粘到这里，回车即可复现整条遭遇链…"></textarea>
+      <div class="row"><button id="btnImport">复现这条命运</button><span class="hint" id="importMsg"></span></div>
+      <div class="hint">命运码 = 种子 + 抉择序列。它不含任何遭遇内容，却能在任何一台设备上重建完全相同的一串遭遇——这就是确定性重放。</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <details class="editor">
+      <summary>遭遇表编辑器（自定义 / 权重）</summary>
+      <div id="editorBody"></div>
+      <div class="row" style="margin-top:6px">
+        <button id="btnSaveTable" class="primary">保存为我的遭遇表</button>
+        <button id="btnResetTable" class="ghost">恢复默认</button>
+        <span class="hint" id="tableMsg"></span>
+      </div>
+    </details>
+  </div>
+
+  <footer>
+    纯离线单文件 · 无网络请求 · 种子与自定义表保存在本机 localStorage<br>
+    dayliydo / 2026-10 · TRPG 桌面工具系列
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ========== 1. 确定性随机：字符串种子 -> PRNG 流 ========== */
+  function xmur3(str) {
+    var h = 1779033703 ^ str.length;
+    for (var i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return h >>> 0;
+    };
+  }
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function hashOf(seed) {
+    var h = xmur3("dayliydo::encounter::" + seed)();
+    return h.toString(16).toUpperCase().padStart(8, "0");
+  }
+
+  /* ========== 2. 默认遭遇表 ========== */
+  var DEFAULT_TABLE = [
+    { id: "environment", name: "环境", base: 10, entries: [
+      { t: "塌陷的古道", d: "路基被雨水掏空，露出下方黑黢黢的空腔。绕行要多花半天，直走要赌命。", w: 5,
+        details: ["蹄印止于裂缝边缘", "空腔深处有风声回旋", "路旁插着褪色的警告木牌", "碎陶片散落一地", "有绳索从上方垂下", "空气里有硫磺味"] },
+      { t: "雾中的渡口", d: "河面被浓雾吞没，对岸的灯火忽明忽暗。渡船拴在桩上，但船夫不见踪影。", w: 5,
+        details: ["船舷内侧有五道抓痕", "桩上系着崭新的绳结", "雾里传来桨声却看不见船", "水边漂着一只空酒壶", "船底积了半寸冷水", "对岸灯火其实是三盏"] },
+      { t: "无人的哨塔", d: "石塔立在隘口正中，门虚掩。塔顶的旗帜已经烂成布条，但有人近期清扫过台阶。", w: 4,
+        details: ["台阶上的浮尘只积了三天", "塔顶火盆余温尚存", "墙上有新刻的记号", "箭孔朝向内侧", "角落里堆着换下的靴子", "梯子断了两级"] },
+      { t: "倒伏的森林", d: "一片树以同一方向倒伏，像是被什么从中心向外推倒。断口整齐得不像风灾。", w: 3,
+        details: ["倒伏方向指向一处洼地", "断口处渗着琥珀色树脂", "树根下埋着生锈的铁牌", "鸟群绕开这片区域", "地面有环形焦痕", "一根树干上钉着箭头"] },
+      { t: "会移动的营地", d: "篝火、帐篷、拴马桩一应俱全，唯独没有人。你确信昨天这里还是一片空地。", w: 3,
+        details: ["锅里的汤还是温的", "帐篷内摆着七副碗筷", "马槽里是新鲜的草料", "地面插着界桩但无人看守", "灰烬中埋着半张地图", "有一顶帐篷是空的但门帘在动"] }
+    ]},
+    { id: "creature", name: "生物", base: 10, entries: [
+      { t: "拾荒的巨鸦", d: "翼展超过两人高的黑鸦落在残骸上，歪头打量你。它的爪子里攥着某样金属物件。", w: 5,
+        details: ["爪中之物像一枚印章", "它的左翼有旧伤", "巢就在头顶三十步", "它对你的干粮更感兴趣", "尾羽上缠着红绳", "它学会了模仿人声"] },
+      { t: "守桥的石兽", d: "桥墩上的石雕在你要踏上去时睁开了眼。它不攻击，只是横在路中，像在等一句话。", w: 4,
+        details: ["它只对押韵的句子有反应", "颈后刻着一行古字", "石缝里长出白色小花", "它盯着你腰间的金属", "一只眼睛是后来补上的", "桥下水流声掩盖了它的低吼"] },
+      { t: "沼泽的模仿者", d: "一团湿漉漉的形体站在浅水里，正用你同伴的声音呼救。真正的同伴就在你身后。", w: 4,
+        details: ["它重复的是你昨天说过的话", "它没有影子", "水面上浮着细小的气泡", "它每说一句就缩小一圈", "附近有三具同类残骸", "它知道你的名字"] },
+      { t: "铁皮猎犬群", d: "六只由铆钉与齿轮拼成的猎犬在坡下列队，动作完全同步，等待某个指令。", w: 3,
+        details: ["它们颈环上刻着同一个编号", "其中一只掉了一条腿", "它们不越过地上的白线", "齿间卡着深色布料", "指令来自远处的一声哨", "它们的眼睛朝向同一处"] },
+      { t: "迷路的商队护卫", d: "一个疲惫的护卫牵着两匹驮马，说商队三天前遭袭，他是唯一跑出来的。他不敢回头。", w: 4,
+        details: ["驮马上没有货物只有空箱", "他的剑鞘里没有剑", "他一直避免说商队的名字", "马腿上绑着陌生纹章", "他左手一直握着一枚硬币", "他记得的路和你的地图相反"] }
+    ]},
+    { id: "person", name: "人物", base: 10, entries: [
+      { t: "记账的旅人", d: "一位带着厚账簿的旅人请求同行，他说自己在统计这条路上所有的死亡，好算出明年的过路费。", w: 5,
+        details: ["账簿上你的名字已经写好了", "他从不吃别人的东西", "他记得每个遇难者的姓名", "他的墨水瓶从不干涸", "他问你愿意被记为第几位", "他的鞋底没有泥土"] },
+      { t: "沉默的修补匠", d: "老人在路边修补一件盔甲，针脚细密。他不收钱，只要求你留下一件坏了的东西。", w: 4,
+        details: ["他补的盔甲上刻着别人的名字", "他的工具全是自己打的", "他听得见金属的疲惫", "他脚边的箱子锁着三道锁", "他问你的武器杀过几个人", "他补好的东西会轻一点"] },
+      { t: "自称先知的醉汉", d: "醉汉拦住你，说你会在第三次日落前失去一样重要的东西。他说完就笑，笑得停不下来。", w: 4,
+        details: ["他能背出你昨天的行程", "他手里的酒壶是空的", "他记得你的口音来自哪里", "他说完就忘了说过什么", "他的影子比人长一截", "他脚边画着一个圆"] },
+      { t: "追债的三人组", d: "三个人堵住路口，手持字据。名字是你的，印章也是你的，但你从未借过这笔债。", w: 4,
+        details: ["字据上的墨迹还没干透", "领头的人缺了右手小指", "他们知道你的行程路线", "字据背面写着一个地名", "他们不介意用货物抵债", "其中一人一直在看天"] },
+      { t: "采药的学徒", d: "少年在崖边采药，脚下一滑，抓住的藤蔓正在松脱。他喊的是你的名字。", w: 3,
+        details: ["他的药篓里有你熟悉的草药", "藤蔓是从石缝里长出来的", "他腰间挂着一枚铜牌", "他说是师父让他等在这里", "崖下有人的说话声", "他的手掌全是旧茧"] }
+    ]},
+    { id: "event", name: "事件", base: 10, entries: [
+      { t: "突然的落石", d: "山坡上传来碎裂声，碎石先小后大地滚落。你有十几秒决定是冲过去还是退回来。", w: 5,
+        details: ["落石停得毫无理由", "石堆里露出一个箱角", "响声引来了别的东西", "石头上刻着整齐的沟槽", "有东西在石堆后移动", "落石恰好封住了退路"] },
+      { t: "无声的钟鸣", d: "远处塔楼的大钟摆动起来，但你听不到任何声音。你的牙齿却在共振发麻。", w: 3,
+        details: ["钟摆的节奏像某种计数", "所有动物同时静止", "你的影子在钟声中变淡", "钟声停止后下起了小雨", "塔楼的方向升起一缕烟", "钟摆一共摆了十三下"] },
+      { t: "易主的火光", d: "你生起的篝火突然改变颜色，从橙红变成幽蓝，火焰形状像在指向某个方向。", w: 3,
+        details: ["蓝焰不烫手", "火焰指向你明天的路", "灰烬里浮现半句话", "火苗把影子拉向同一侧", "有人从远处朝火堆走来", "柴火烧尽却不灭"] },
+      { t: "突然的降雪", d: "盛夏的正午，雪花落在你的肩甲上并且不化。雪只落在一条笔直的带状区域里。", w: 3,
+        details: ["雪带正好指向北方", "雪里混着白色的羽毛", "雪落在金属上会发出低鸣", "雪带尽头立着一个人影", "积雪温度正常却压不实", "有脚印从雪带中央出现"] },
+      { t: "临时的集市", d: "前一天还是荒地的谷口，今天支起了几十个摊位。摊主们安静地卖着不该存在的东西。", w: 4,
+        details: ["一个摊位卖的是你的旧物", "没人使用货币", "摊主们同时收摊的信号未出现", "有一摊只卖空瓶", "所有货品都蒙着布", "这里的地图上没有这个谷口"] }
+    ]},
+    { id: "clue", name: "线索", base: 10, entries: [
+      { t: "半张烧焦的名单", d: "灰烬里压着一张纸，只剩下一列名字的下半截。最后一个名字的笔画被刻意划掉。", w: 5,
+        details: ["被划掉的名字与你同姓", "纸张材质来自官府文牒", "背面有蜡封残痕", "名字按日期排列", "最后一行是三天后的日期", "有一个名字是用血写的"] },
+      { t: "反复出现的符号", d: "你在今天见到的第三个地方看到了同一个符号：三道弧线围着一个点。刻痕都很新。", w: 4,
+        details: ["符号朝向每次都在转", "刻痕工具只有一个人有", "符号下方有极小的数字", "它与本地纹章恰好相反", "符号刻在视线齐高处", "有人在远处看着你发现它"] },
+      { t: "失主的信物", d: "一枚徽章躺在路中央，像是被故意摆正的。背面刻着一句没写完的话。", w: 4,
+        details: ["徽章温度高于环境", "刻字用的是旧体", "卡扣上有新鲜的指痕", "它与三年前的悬赏有关", "背面粘着一根头发", "有人在附近找了很久"] },
+      { t: "被涂改的地图", d: "一张地图钉在树干上，有人用红墨把某段路划掉，又在旁边画了一条更短的线。", w: 3,
+        details: ["红线的尽头没有标注地名", "被划掉的路仍然存在", "墨迹是两天前的", "地图边角标着一个数字", "红线穿过一片水域", "图钉是新打的"] },
+      { t: "不该存在的回信", d: "你在旧营地的石缝里找到一封回信，收信人是你，落款日期是明天。", w: 3,
+        details: ["信纸是你自己带的同一种", "字迹与你极像但有处笔误", "信封没有封口", "信里提到你还没做的决定", "信的折痕是新的", "落款处盖着你的私印"] }
+    ]}
+  ];
+
+  var ATTITUDE = ["敌意", "戒备", "冷淡", "好奇", "友善", "热忱"];
+  var LOOT = ["一无所获", "少量硬币", "可用消耗品", "关键线索碎片", "稀有物件", "稀有物件 + 一桩麻烦"];
+
+  var CHOICES = [
+    { id: "fight",  name: "战斗", code: "战", hint: "正面冲突", threat: 2, deltas: { creature: 3, event: 1, person: -1 } },
+    { id: "parley", name: "交涉", code: "交", hint: "开口谈判", threat: -1, deltas: { person: 3, clue: 1, creature: -1 } },
+    { id: "sneak",  name: "潜行", code: "潜", hint: "绕行观察", threat: -1, deltas: { environment: 2, clue: 2, creature: -1 } },
+    { id: "flee",   name: "回避", code: "避", hint: "脱离现场", threat: -2, deltas: { environment: 3, event: -1, person: -2 } }
+  ];
+
+  var SEED_A = ["雾港", "灰烬", "断桥", "月蚀", "荆棘", "锈钟", "空棺", "盐沼", "哑铃", "铁蔷薇", "无名渡", "第七夜", "残章", "铅云", "石鹿"];
+  var SEED_B = ["午夜", "黎明", "低语", "回声", "残页", "旧誓", "冷灶", "白鸦", "窄门", "余烬", "静默", "长路"];
+
+  /* ========== 3. 引擎 ========== */
+  var LS_TABLE = "dayliydo.encounter.table.v1";
+  var LS_STATE = "dayliydo.encounter.state.v1";
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  function byId(arr, id) {
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i];
+    return arr[0];
+  }
+  function pickWeighted(items, r) {
+    var total = 0, i;
+    for (i = 0; i < items.length; i++) total += Math.max(0.0001, items[i].w);
+    var x = r * total;
+    for (i = 0; i < items.length; i++) {
+      x -= Math.max(0.0001, items[i].w);
+      if (x <= 0) return items[i];
+    }
+    return items[items.length - 1];
+  }
+  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+  /* 单次抽取：固定消耗 5 个随机数（可精确重放） */
+  function drawOne(table, rng, weights) {
+    var pool = table.map(function (c) { return { id: c.id, w: c.base + weights[c.id] }; });
+    var cat = byId(table, pickWeighted(pool, rng()).id);
+    var entry = pickWeighted(cat.entries, rng());
+    var attIdx = Math.floor(rng() * 6);
+    var detIdx = Math.floor(rng() * entry.details.length);
+    var lootIdx = Math.floor(rng() * 6);
+    return {
+      catId: cat.id, catName: cat.name,
+      title: entry.t, desc: entry.d,
+      attRoll: attIdx + 1, attitude: ATTITUDE[attIdx],
+      detRoll: detIdx + 1, detail: entry.details[detIdx],
+      lootRoll: lootIdx + 1, loot: LOOT[lootIdx]
+    };
+  }
+
+  function applyChoice(weights, threat, choice) {
+    var d = choice.deltas, k;
+    for (k in d) if (Object.prototype.hasOwnProperty.call(d, k)) weights[k] += d[k];
+    for (k in weights) if (Object.prototype.hasOwnProperty.call(weights, k)) weights[k] = clamp(weights[k], -8, 8);
+    return clamp(threat + choice.threat, 0, 10);
+  }
+
+  /* 从 (种子, 抉择序列) 重放整条命运链——这是可复现性的核心 */
+  function buildChain(table, seed, choices) {
+    var rng = mulberry32(xmur3("dayliydo::encounter::" + seed)());
+    var weights = {}; var threat = 0; var chain = []; var i;
+    for (i = 0; i < table.length; i++) weights[table[i].id] = 0;
+    for (i = 0; i < choices.length; i++) {
+      var d = drawOne(table, rng, weights);
+      var ch = findChoice(choices[i]);
+      chain.push({ draw: d, choice: ch });
+      threat = applyChoice(weights, threat, ch);
+    }
+    var pending = drawOne(table, rng, weights);
+    return { chain: chain, pending: pending, weights: weights, threat: threat };
+  }
+  function findChoice(id) {
+    for (var i = 0; i < CHOICES.length; i++) if (CHOICES[i].id === id) return CHOICES[i];
+    return CHOICES[0];
+  }
+
+  /* ========== 4. 状态 ========== */
+  var table = loadTable();
+  var state = { seed: "", choices: [] };
+
+  function loadTable() {
+    try {
+      var raw = localStorage.getItem(LS_TABLE);
+      if (!raw) return JSON.parse(JSON.stringify(DEFAULT_TABLE));
+      var t = JSON.parse(raw);
+      if (!Array.isArray(t) || !t.length) return JSON.parse(JSON.stringify(DEFAULT_TABLE));
+      return t;
+    } catch (e) { return JSON.parse(JSON.stringify(DEFAULT_TABLE)); }
+  }
+  function saveState() {
+    try { localStorage.setItem(LS_STATE, JSON.stringify(state)); } catch (e) {}
+  }
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(LS_STATE);
+      if (!raw) return null;
+      var s = JSON.parse(raw);
+      if (s && typeof s.seed === "string" && Array.isArray(s.choices)) return s;
+    } catch (e) {}
+    return null;
+  }
+
+  /* ========== 5. 渲染 ========== */
+  var $ = function (id) { return document.getElementById(id); };
+
+  function render() {
+    var res = buildChain(table, state.seed, state.choices);
+    var p = res.pending;
+    var n = state.choices.length + 1;
+
+    $("cardCat").textContent = p.catName;
+    $("cardNo").textContent = "#" + n;
+    $("cardTitle").textContent = p.title;
+    $("cardDesc").textContent = p.desc;
+    $("f1").textContent = "d6·" + p.attRoll; $("v1").textContent = p.attitude;
+    $("f2").textContent = "d6·" + p.detRoll; $("v2").textContent = p.detail;
+    $("f3").textContent = "d6·" + p.lootRoll; $("v3").textContent = p.loot;
+
+    $("seedHash").textContent = hashOf(state.seed);
+    $("choiceSeq").textContent = state.choices.length
+      ? state.choices.map(function (c) { return findChoice(c).code; }).join(" → ")
+      : "（空）";
+    $("drawCount").textContent = "已抽 " + n + " 次";
+
+    /* 权重条 */
+    var maxAbs = 8, html = "";
+    for (var i = 0; i < table.length; i++) {
+      var cid = table[i].id;
+      var w = res.weights[cid] || 0;
+      var pct = Math.round((w + maxAbs) / (maxAbs * 2) * 100);
+      var cls = w > 0 ? "up" : (w < 0 ? "down" : "");
+      html += '<div class="wrow ' + cls + '"><span class="wn">' + esc(table[i].name) + '</span>' +
+              '<span class="wbar"><i style="width:' + pct + '%"></i></span>' +
+              '<span class="wv">' + (w > 0 ? "+" : "") + w + '</span></div>';
+    }
+    $("weights").innerHTML = html;
+
+    /* 危险度 */
+    var tv = res.threat;
+    $("threatVal").textContent = tv + " / 10";
+    var bar = $("threatBar");
+    bar.style.width = (tv * 10) + "%";
+    bar.style.background = tv >= 7 ? "var(--danger)" : (tv >= 4 ? "var(--accent)" : "var(--safe)");
+
+    /* 命运链 */
+    var chainEl = $("chain");
+    if (!res.chain.length) {
+      chainEl.innerHTML = '<div class="empty">尚无记录。做出第一次抉择后，命运链会在此生长。</div>';
+    } else {
+      var ch = "";
+      for (var k = res.chain.length - 1; k >= 0; k--) {
+        var it = res.chain[k];
+        ch += '<div class="link"><span class="idx">' + (k + 1) + '</span>' +
+              '<span class="lt">' + esc(it.draw.title) + '<em>' + esc(it.draw.catName) + ' · ' + esc(it.draw.attitude) + '</em></span>' +
+              '<span class="lc">' + esc(it.choice.name) + '</span></div>';
+      }
+      chainEl.innerHTML = ch;
+    }
+
+    $("btnUndo").disabled = state.choices.length === 0;
+    $("shareCode").textContent = shareCode();
+    saveState();
+  }
+
+  function shareCode() {
+    var codes = state.choices.map(function (c) { return findChoice(c).code; }).join("");
+    return "ET1:" + state.seed + "|" + codes;
+  }
+
+  function renderChoices() {
+    var box = $("choices"); var html = "";
+    for (var i = 0; i < CHOICES.length; i++) {
+      var c = CHOICES[i];
+      html += '<button class="choice" data-id="' + esc(c.id) + '"><span class="cn">' + esc(c.name) +
+              '</span><span class="cd">' + esc(c.hint) + '</span></button>';
+    }
+    box.innerHTML = html;
+    var btns = box.querySelectorAll(".choice");
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].addEventListener("click", function () {
+        state.choices.push(this.getAttribute("data-id"));
+        render();
+      });
+    }
+  }
+
+  function renderEditor() {
+    var body = $("editorBody"); var html = "";
+    for (var i = 0; i < table.length; i++) {
+      var c = table[i];
+      html += '<div class="cat-block"><div class="cat-name">' + esc(c.name) +
+              '（基础权重 ' + c.base + '）</div>';
+      for (var j = 0; j < c.entries.length; j++) {
+        html += '<div class="entry-row">' +
+                '<input type="text" data-ci="' + i + '" data-ei="' + j + '" class="et" value="' + esc(c.entries[j].t) + '">' +
+                '<input type="number" data-ci="' + i + '" data-ei="' + j + '" class="ew" min="1" max="20" value="' + Number(c.entries[j].w) + '">' +
+                '<button class="del" data-ci="' + i + '" data-ei="' + j + '" title="删除">×</button></div>';
+      }
+      html += '<div class="row" style="margin-top:4px"><button class="ghost addbtn" data-ci="' + i + '" style="font-size:.72rem;padding:5px 10px">+ 新增条目</button></div></div>';
+    }
+    body.innerHTML = html;
+
+    var dels = body.querySelectorAll(".del");
+    for (var d = 0; d < dels.length; d++) {
+      dels[d].addEventListener("click", function () {
+        var ci = +this.getAttribute("data-ci"), ei = +this.getAttribute("data-ei");
+        syncEditor();
+        if (table[ci].entries.length > 1) table[ci].entries.splice(ei, 1);
+        renderEditor(); render();
+      });
+    }
+    var adds = body.querySelectorAll(".addbtn");
+    for (var a = 0; a < adds.length; a++) {
+      adds[a].addEventListener("click", function () {
+        syncEditor();
+        var ci = +this.getAttribute("data-ci");
+        table[ci].entries.push({ t: "新条目", d: "（描述待补）", w: 3, details: ["细节一", "细节二", "细节三", "细节四", "细节五", "细节六"] });
+        renderEditor(); render();
+      });
+    }
+  }
+  function syncEditor() {
+    var ts = document.querySelectorAll(".et"), ws = document.querySelectorAll(".ew");
+    for (var i = 0; i < ts.length; i++) {
+      var ci = +ts[i].getAttribute("data-ci"), ei = +ts[i].getAttribute("data-ei");
+      if (table[ci] && table[ci].entries[ei]) table[ci].entries[ei].t = ts[i].value;
+    }
+    for (var j = 0; j < ws.length; j++) {
+      var c2 = +ws[j].getAttribute("data-ci"), e2 = +ws[j].getAttribute("data-ei");
+      if (table[c2] && table[c2].entries[e2]) table[c2].entries[e2].w = clamp(Number(ws[j].value) || 1, 1, 20);
+    }
+  }
+
+  /* ========== 6. 交互绑定 ========== */
+  function randomSeed() {
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    return pick(SEED_A) + "的" + pick(SEED_B);
+  }
+
+  $("seedInput").addEventListener("input", function () {
+    state.seed = this.value;
+    render();
+  });
+  $("btnRandomSeed").addEventListener("click", function () {
+    state.seed = randomSeed();
+    state.choices = [];
+    $("seedInput").value = state.seed;
+    render();
+  });
+  $("btnRestart").addEventListener("click", function () {
+    state.choices = [];
+    render();
+  });
+  $("btnUndo").addEventListener("click", function () {
+    state.choices.pop();
+    render();
+  });
+  $("btnCopy").addEventListener("click", function () {
+    var code = shareCode();
+    var msg = $("copyMsg");
+    function done(okText) {
+      msg.textContent = okText;
+      msg.className = "ok";
+      setTimeout(function () { msg.textContent = ""; }, 2200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function () { done("已复制 ✓"); }, function () { fallback(); });
+    } else { fallback(); }
+    function fallback() {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = code; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta);
+        done("已复制 ✓");
+      } catch (e) { done("复制失败，请手动选中上方命运码"); }
+    }
+  });
+  $("btnImport").addEventListener("click", function () {
+    var raw = $("importBox").value.trim();
+    var msg = $("importMsg");
+    var m = /^ET1:([\s\S]*)\|([^|]*)$/.exec(raw);
+    if (!m) { msg.textContent = "格式不对：应为 ET1:种子|抉择"; msg.className = "hint"; return; }
+    var seed = m[1];
+    var ids = [];
+    var chars = m[2];
+    for (var i = 0; i < chars.length; i++) {
+      var found = null;
+      for (var j = 0; j < CHOICES.length; j++) if (CHOICES[j].code === chars[i]) found = CHOICES[j];
+      if (found) ids.push(found.id);
+    }
+    state.seed = seed;
+    state.choices = ids;
+    $("seedInput").value = seed;
+    $("importBox").value = "";
+    render();
+    msg.textContent = "已复现 " + (ids.length + 1) + " 次遭遇";
+    msg.className = "ok";
+    setTimeout(function () { msg.textContent = ""; }, 2600);
+  });
+  $("btnSaveTable").addEventListener("click", function () {
+    syncEditor();
+    var msg = $("tableMsg");
+    try {
+      localStorage.setItem(LS_TABLE, JSON.stringify(table));
+      msg.textContent = "已保存到本机 ✓";
+      msg.className = "ok";
+      render();
+    } catch (e) { msg.textContent = "保存失败（localStorage 不可用）"; msg.className = "hint"; }
+    setTimeout(function () { msg.textContent = ""; }, 2400);
+  });
+  $("btnResetTable").addEventListener("click", function () {
+    table = JSON.parse(JSON.stringify(DEFAULT_TABLE));
+    try { localStorage.removeItem(LS_TABLE); } catch (e) {}
+    renderEditor(); render();
+    var msg = $("tableMsg");
+    msg.textContent = "已恢复默认遭遇表";
+    msg.className = "ok";
+    setTimeout(function () { msg.textContent = ""; }, 2400);
+  });
+  $("importBox").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("btnImport").click(); }
+  });
+
+  /* 快捷键：1-4 抉择，R 重开 */
+  document.addEventListener("keydown", function (e) {
+    if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if (e.key >= "1" && e.key <= "4") {
+      var idx = +e.key - 1;
+      if (CHOICES[idx]) { state.choices.push(CHOICES[idx].id); render(); }
+    } else if (e.key === "r" || e.key === "R") {
+      state.choices = []; render();
+    } else if (e.key === "Backspace") {
+      state.choices.pop(); render();
+    }
+  });
+
+  /* ========== 7. 启动 ========== */
+  (function init() {
+    var saved = loadState();
+    if (saved && saved.seed) { state = saved; }
+    else { state = { seed: randomSeed(), choices: [] }; }
+    $("seedInput").value = state.seed;
+    renderChoices();
+    renderEditor();
+    render();
+  })();
+})();
+</script>
+</body>
+</html>

@@ -464,8 +464,12 @@ function readCode(text){
     if (v === 1) out.rulings[FACTS[i].id] = 1;
     else if (v === 2) out.rulings[FACTS[i].id] = 0;
   }
-  if (typeof obj.w === 'string' && witById(obj.w)) out.who = obj.w;
-  if (typeof obj.m === 'string' && motiveById(obj.m)) out.why = obj.m;
+  // 凶手与动机：可以是空串（尚未指认），但一旦非空就必须是已知 id——不静默丢弃
+  if (typeof obj.w !== 'string' || typeof obj.m !== 'string') return null;
+  if (obj.w !== '' && !witById(obj.w)) return null;
+  if (obj.m !== '' && !motiveById(obj.m)) return null;
+  out.who = obj.w;
+  out.why = obj.m;
   return out;
 }
 

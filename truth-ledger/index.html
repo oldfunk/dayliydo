@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>真相账本 · 罗生门推理台</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1b2129; --line:#2a3240;
+  --text:#e6edf3; --muted:#8b96a5; --accent:#d4a24c; --accent-dim:#5c4a22;
+  --yes:#4fb477; --no:#d4574f; --none:#5b6675;
+  --r:12px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f4f1ea; --panel:#ffffff; --panel2:#faf8f4; --line:#ded7c9;
+    --text:#241f18; --muted:#6f6656; --accent:#9c6f22; --accent-dim:#e6d5b0;
+    --yes:#2e8b57; --no:#c0392b; --none:#a8a094;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:28px 18px 60px}
+
+/* ── 头部 ── */
+.hero{border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:20px}
+.kicker{font-size:12px; letter-spacing:.22em; color:var(--accent); text-transform:uppercase}
+.hero h1{margin:6px 0 2px; font-size:32px; letter-spacing:.06em; font-weight:600}
+.hero .sub{margin:0; color:var(--muted); font-size:14px}
+
+/* ── 案卷 ── */
+.brief{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); margin-bottom:18px; overflow:hidden}
+.brief>summary{
+  cursor:pointer; padding:12px 16px; font-weight:600; letter-spacing:.08em;
+  color:var(--accent); list-style:none; user-select:none;
+}
+.brief>summary::-webkit-details-marker{display:none}
+.brief>summary::before{content:"▸ "; display:inline-block; transition:transform .18s}
+.brief[open]>summary::before{transform:rotate(90deg)}
+.brief-body{padding:0 18px 16px; border-top:1px solid var(--line)}
+.brief-body p{margin:12px 0; color:var(--text)}
+.brief-body p.hint{color:var(--muted); font-size:13.5px; border-left:3px solid var(--accent-dim); padding-left:12px}
+
+/* ── 工具条 ── */
+.toolbar{display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between; margin-bottom:16px}
+.prog{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted)}
+.bar{width:150px; height:6px; background:var(--panel2); border:1px solid var(--line); border-radius:99px; overflow:hidden}
+.bar i{display:block; height:100%; width:0; background:var(--accent); transition:width .25s}
+.prog-num{font-variant-numeric:tabular-nums; color:var(--text); font-weight:600}
+.tools{display:flex; gap:8px}
+.btn{
+  background:var(--accent); color:#141008; border:none; border-radius:8px;
+  padding:8px 16px; font:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
+  transition:filter .15s, opacity .15s;
+}
+.btn:hover{filter:brightness(1.1)}
+.btn:disabled{opacity:.4; cursor:not-allowed}
+.btn.ghost{background:transparent; color:var(--text); border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--accent); color:var(--accent)}
+
+/* ── 导入框 ── */
+.import-box{display:flex; gap:8px; margin-bottom:16px}
+.import-box textarea{
+  flex:1; min-height:52px; resize:vertical; background:var(--panel); color:var(--text);
+  border:1px solid var(--line); border-radius:8px; padding:9px 12px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+}
+
+/* ── 布局 ── */
+.layout{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start}
+@media (max-width:900px){ .layout{grid-template-columns:1fr} }
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:16px}
+
+/* ── 矩阵 ── */
+.table-scroll{overflow-x:auto; margin:-4px}
+.matrix{border-collapse:collapse; width:100%; min-width:760px; font-size:13.5px}
+.matrix th, .matrix td{border-bottom:1px solid var(--line); padding:8px 8px; text-align:center; vertical-align:middle}
+.matrix thead th{
+  position:sticky; top:0; z-index:2; background:var(--panel);
+  font-size:12.5px; font-weight:600; color:var(--muted); letter-spacing:.04em;
+  border-bottom:1px solid var(--line); padding:10px 6px;
+}
+.matrix thead th.who b{display:block; color:var(--text); font-size:13.5px}
+.matrix thead th.who span{display:block; font-size:11px; font-weight:400; color:var(--muted)}
+.matrix td.fact{text-align:left; min-width:270px; max-width:360px; line-height:1.5; padding-right:14px}
+.matrix tr:last-child td{border-bottom:none}
+.matrix td.fact .key{
+  display:inline-block; font-size:10.5px; padding:1px 6px; margin-right:7px;
+  border:1px solid var(--accent-dim); color:var(--accent); border-radius:99px; vertical-align:1px;
+}
+.cell{
+  width:44px; cursor:pointer; border-radius:7px; font-size:15px; font-weight:600;
+  color:var(--none); transition:background .15s, color .15s;
+  user-select:none;
+}
+.cell:hover{background:var(--panel2)}
+.cell.v1{color:var(--yes)}
+.cell.v0{color:var(--no)}
+.cell.v-1{color:var(--none); opacity:.6}
+.cell.hit{background:rgba(79,180,119,.14)}
+.cell.miss{background:rgba(212,87,79,.16)}
+.cell.sel{outline:2px solid var(--accent); outline-offset:-2px}
+
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.seg button{
+  background:transparent; border:none; color:var(--muted); font:inherit; font-size:12px;
+  padding:5px 9px; cursor:pointer; transition:background .12s,color .12s;
+}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button:hover{color:var(--text)}
+.seg button.on[data-v="1"]{background:rgba(79,180,119,.2); color:var(--yes)}
+.seg button.on[data-v="0"]{background:rgba(212,87,79,.2); color:var(--no)}
+.seg button.on[data-v="-1"]{background:var(--panel2); color:var(--text)}
+
+/* ── 详情 ── */
+.detail{
+  margin-top:14px; padding:13px 15px; background:var(--panel2);
+  border:1px solid var(--line); border-radius:10px; font-size:13.5px; color:var(--muted);
+  min-height:72px;
+}
+.detail .who{color:var(--accent); font-weight:600; margin-bottom:4px}
+.detail .quote{color:var(--text); font-size:14.5px; line-height:1.7; margin:6px 0 0}
+.detail .judge{font-size:12.5px; margin-top:8px}
+.detail .judge.ok{color:var(--yes)}
+.detail .judge.bad{color:var(--no)}
+
+/* ── 热力 ── */
+.side h2{margin:0 0 4px; font-size:15px; letter-spacing:.06em}
+.side-hint{margin:0 0 14px; font-size:12px; color:var(--muted); line-height:1.5}
+.heat-row{display:grid; grid-template-columns:64px 1fr 44px; gap:8px; align-items:center; margin-bottom:10px}
+.heat-name{font-size:12.5px; font-weight:600}
+.heat-name span{display:block; font-size:10.5px; color:var(--muted); font-weight:400}
+.heat-bar{height:8px; background:var(--panel2); border:1px solid var(--line); border-radius:99px; overflow:hidden}
+.heat-bar i{display:block; height:100%; width:0; transition:width .3s}
+.heat-num{font-size:12px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums}
+
+/* ── 结案 ── */
+.verdict{margin-top:18px}
+.verdict h2{margin:0 0 12px; font-size:15px; letter-spacing:.06em}
+.vrow{display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end}
+.field{display:flex; flex-direction:column; gap:5px}
+.field label{font-size:12px; color:var(--muted)}
+select{
+  background:var(--panel2); color:var(--text); border:1px solid var(--line);
+  border-radius:8px; padding:8px 12px; font:inherit; font-size:13.5px; min-width:190px;
+}
+.vnote{font-size:12.5px; color:var(--muted); margin:12px 0 0}
+
+/* ── 弹层 ── */
+.modal{position:fixed; inset:0; background:rgba(0,0,0,.66); display:flex; align-items:flex-start; justify-content:center; padding:24px 14px; overflow-y:auto; z-index:50}
+.modal[hidden]{display:none}
+.modal-inner{background:var(--panel); border:1px solid var(--line); border-radius:14px; max-width:720px; width:100%; padding:22px 24px 26px; margin:auto 0}
+.modal-inner h2{margin:0 0 2px; font-size:22px; letter-spacing:.05em}
+.score-line{color:var(--accent); font-size:13.5px; margin:0 0 18px}
+.modal h3{font-size:14px; letter-spacing:.08em; color:var(--accent); margin:22px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line)}
+.modal p{margin:9px 0; font-size:14px}
+.tl{margin:0; padding:0; list-style:none}
+.tl li{position:relative; padding:0 0 12px 18px; border-left:1px solid var(--line); margin-left:5px; font-size:13.5px}
+.tl li:last-child{border-left-color:transparent; padding-bottom:0}
+.tl li::before{content:""; position:absolute; left:-4.5px; top:7px; width:8px; height:8px; border-radius:99px; background:var(--accent)}
+.tl b{color:var(--accent); font-weight:600}
+.liar{margin:8px 0; font-size:13.5px; padding-left:12px; border-left:2px solid var(--line)}
+.liar b{color:var(--text)}
+.liar.clean{border-left-color:var(--yes)}
+.liar b.who{color:var(--accent)}
+.factcheck{font-size:13px; margin:6px 0; display:flex; gap:8px}
+.factcheck .mark{font-weight:700}
+.factcheck .ok{color:var(--yes)}
+.factcheck .bad{color:var(--no)}
+.code-row{display:flex; gap:8px; margin-top:8px}
+.code-row textarea{
+  flex:1; height:56px; resize:none; background:var(--panel2); color:var(--text);
+  border:1px solid var(--line); border-radius:8px; padding:8px 11px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+}
+.modal-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:22px}
+
+/* ── 提示 ── */
+.toast{
+  position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
+  background:var(--panel2); border:1px solid var(--accent-dim); color:var(--text);
+  padding:9px 18px; border-radius:99px; font-size:13px; z-index:80;
+}
+.toast[hidden]{display:none}
+
+footer{margin-top:34px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">单文件 · 离线推理台</div>
+    <h1>真相账本</h1>
+    <p class="sub">五个人的证词，一张可以推演的矩阵</p>
+  </header>
+
+  <details class="brief" open>
+    <summary>案卷</summary>
+    <div class="brief-body">
+      <p>宣统三年三月十六，夜。江南云渡镇，云渡客栈。</p>
+      <p>掌柜柳三死在账房里，后脑受了钝器重击。发现时，账房门闩从内侧插着，窗半开，窗下后巷积着一滩水。账本被撕去了一页。</p>
+      <p>当夜店里有五个人。他们各自说了一段话——没有一个人说全了实话。</p>
+      <p class="hint">把每条命题判为「真」或「假」。判定一下，格子立刻标出谁与你冲突。冲突最多、且冲突集中在关键命题上的人，就是你要找的人。你的裁定越准，右侧热力越准。</p>
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <div class="prog">
+      <span>关键命题已裁定</span>
+      <div class="bar"><i id="progBar"></i></div>
+      <span class="prog-num" id="progNum">0 / 3</span>
+    </div>
+    <div class="tools">
+      <button id="btnImport" class="btn ghost" type="button">导入真相码</button>
+      <button id="btnReset" class="btn ghost" type="button">重置</button>
+    </div>
+  </div>
+
+  <div class="import-box" id="importBox" hidden>
+    <textarea id="importArea" placeholder="粘贴真相码（TL1.…）" spellcheck="false"></textarea>
+    <button id="btnImportGo" class="btn" type="button">导入</button>
+  </div>
+
+  <div class="layout">
+    <section class="card">
+      <div class="table-scroll"><table class="matrix" id="matrix"></table></div>
+      <div class="detail" id="detail">点击任意格子，读该人的原话。</div>
+    </section>
+
+    <aside class="card side">
+      <h2>矛盾热力</h2>
+      <p class="side-hint">按你自己已下的裁定统计。裁定错了，热力就会指向错的人——这就是它的意义。</p>
+      <div id="heat"></div>
+    </aside>
+  </div>
+
+  <section class="card verdict">
+    <h2>结案</h2>
+    <div class="vrow">
+      <div class="field">
+        <label for="selWho">凶手是</label>
+        <select id="selWho"></select>
+      </div>
+      <div class="field">
+        <label for="selWhy">动机是</label>
+        <select id="selWhy"></select>
+      </div>
+      <button id="btnSubmit" class="btn" type="button">提交结案</button>
+    </div>
+    <p class="vnote">提交后不可更改；真相码可以留档，也可以发给别人复现你的推理。</p>
+  </section>
+
+  <footer>
+    真相账本 · 纯 HTML/CSS/JS 单文件，零依赖、零网络请求，双击即可离线运行。<br>
+    进度自动存于本机浏览器；真相码为纯文本，不含任何个人信息。
+  </footer>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-inner" id="modalInner"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ══════════════════════════════════════════════
+   数据层：命题（真相向量） + 五位陈述者（证词矩阵）
+   真相向量 truth：1 = 命题为真，0 = 命题为假
+   证词 v：1 = 该人称此命题为真，0 = 称其为假，-1 = 未提
+   约束：对每条命题，在"发言者"中取严格多数即为真相。
+   ══════════════════════════════════════════════ */
+
+var FACTS = [
+  { id:'f1', text:'亥时三刻之后，无人从客栈正门出入。',                       truth:1, key:false },
+  { id:'f2', text:'众人撞开门时，账房门闩是从内侧插上的。',                   truth:1, key:false },
+  { id:'f3', text:'后巷账房窗下的水渍里，当夜留有一枚脚印。',                 truth:1, key:true  },
+  { id:'f4', text:'苏娘子在二楼唱曲，一直唱到子时。',                         truth:0, key:false },
+  { id:'f5', text:'胡铁山整夜待在自己房中，未曾外出。',                       truth:0, key:false },
+  { id:'f6', text:'玄真道人子时前后一直守在大堂佛龛前诵经。',                 truth:0, key:false },
+  { id:'f7', text:'柳三的账本被撕去了一页。',                                 truth:1, key:true  },
+  { id:'f8', text:'凶器是柴房那把劈柴斧。',                                   truth:1, key:false },
+  { id:'f9', text:'亥时三刻前后，有人从后巷翻窗进入账房。',                   truth:1, key:true  }
+];
+
+var WITNESSES = [
+  {
+    id:'pei', name:'裴九', role:'客栈跑堂',
+    lines:{
+      f1:{v:1, t:'亥时三刻我落的大门栓，之后就没开过。前门一直闩着。'},
+      f2:{v:1, t:'我们几个撞开门，那门闩明明白白插在里侧。屋子是封死的——窗子也小，人钻不进去。'},
+      f3:{v:0, t:'窗下？就一滩雨水，什么也没有。我提着灯看了两遍。'},
+      f4:{v:0, t:'苏娘子亥时末就不唱了。我收拾堂子的时候，楼上已经没声了。'},
+      f6:{v:0, t:'子时大堂是空的。我收完桌子就回屋了，没见着道爷。'},
+      f7:{v:1, t:'账本……是少了一页。可谁知道是谁撕的？那本子就搁在桌上，谁都能碰。'},
+      f8:{v:1, t:'斧头就在柴房。我早上还劈过柴，放回原处了。'},
+      f9:{v:0, t:'后巷我一夜没去。我一直在堂里，不信你问他们。'}
+    }
+  },
+  {
+    id:'su', name:'苏娘子', role:'卖唱女伶',
+    lines:{
+      f1:{v:1, t:'大门我亥时后就见不着有人走了，静得很。'},
+      f2:{v:1, t:'门闩是插在里头的。我随着众人一起进去的，看得清楚。'},
+      f4:{v:1, t:'我一直唱到子时才歇。堂里坐着好几位客官，都听见的。'},
+      f5:{v:0, t:'胡铁山？他出去过。我在后院撞见过他，他没瞧见我。'},
+      f9:{v:1, t:'我从后院回廊上过，看见一个人影从后巷的窗翻进去。身形矮瘦，像是店里的人。'}
+    }
+  },
+  {
+    id:'hu', name:'胡铁山', role:'过路行商',
+    lines:{
+      f2:{v:1, t:'门闩是从里头插上的。我拿肩膀撞的门，一撞就开了，闩还是好的。'},
+      f3:{v:1, t:'后巷那滩水里有脚印，我亲眼见的。湿的，踩得很深。'},
+      f4:{v:0, t:'什么唱到子时？亥时末楼上就没动静了。'},
+      f5:{v:1, t:'我整夜都在房里，没出去过。'},
+      f6:{v:0, t:'我子时回房，从大堂穿过去——佛龛前空着，一个人也没有。'},
+      f7:{v:1, t:'账本我瞄了一眼，确实缺一页，撕口是新的。'},
+      f8:{v:1, t:'斧头就是凶器。斧背上还挂着头发。'},
+      f9:{v:1, t:'我在后巷见一个人翻窗，背影像是跑堂的。'}
+    }
+  },
+  {
+    id:'xuan', name:'玄真', role:'游方道人',
+    lines:{
+      f1:{v:1, t:'前门是静的。我亥时后就没听见过门响。'},
+      f4:{v:0, t:'曲声亥时末就停了。我记得清，因为我还等着听下一折。'},
+      f6:{v:1, t:'子时我一直在大堂佛龛前诵经，没挪过地方。'},
+      f7:{v:1, t:'账本缺页，我看过。'},
+      f9:{v:0, t:'不曾有。后巷那扇窗，我一夜没见有人动过。'}
+    }
+  },
+  {
+    id:'ruo', name:'阿箬', role:'掌柜养女',
+    lines:{
+      f1:{v:1, t:'前门早早就闩了，谁也没出去。'},
+      f2:{v:1, t:'门是从里头闩上的。'},
+      f3:{v:1, t:'清早我去井边打水，路过窗下，那水渍里有个脚印。'},
+      f4:{v:0, t:'苏姐姐亥时末就停了，我那时正往厨房去。'},
+      f5:{v:0, t:'我起夜的时候，看见后院有个人影。是胡先生。'},
+      f6:{v:0, t:'子时我去大堂添灯油，佛龛前是空的，没有人。'},
+      f7:{v:1, t:'账本是我先看见少了一页的。义父……掌柜的脸色很难看。'},
+      f8:{v:1, t:'斧头在柴房，斧背上有血。'},
+      f9:{v:1, t:'我在井边听见后巷有翻窗的响动，还有脚步声。'}
+    }
+  }
+];
+
+var MOTIVES = [
+  { id:'money',  label:'侵吞银钱，账本露馅' },
+  { id:'grudge', label:'旧怨私仇' },
+  { id:'love',   label:'情爱纠葛' },
+  { id:'silence',label:'灭口封嘴' }
+];
+
+var TRUTH = { who:'pei', why:'money' };
+
+var REVEAL = {
+  summary:'裴九杀了柳三。他用柴房的劈柴斧背击中掌柜后脑，再从后窗翻出、落进后巷的水洼，最后用一根细铁丝从窗缝伸回去，把门闩拨上——密室是他做出来的。',
+  timeline:[
+    { t:'亥时初', s:'柳三在账房核账，发现柜上短了银子。被撕去的那一页，记的正是这笔亏空。' },
+    { t:'亥时三刻', s:'柳三把裴九叫进账房对质。门是裴九自己从里面闩上的——他不想让大堂的人听见。' },
+    { t:'争持之间', s:'裴九抄起墙角那把白日劈柴后顺手搁下的斧头，用斧背击中柳三后脑。' },
+    { t:'随后', s:'他把斧头送回柴房，从账房后窗翻出，双脚落进后巷的水洼，留下那枚脚印。' },
+    { t:'紧接着', s:'他用细铁丝从窗缝伸回屋内，把门闩拨上；再翻过院墙，绕回前院，从侧门溜回自己屋里。' },
+    { t:'子时前后', s:'阿箬在井边听见的翻窗声与脚步声，正是这一段。她不知道那是谁，所以没说出口。' },
+    { t:'次日清晨', s:'众人撞开账房，看见一桩"密室命案"。' }
+  ],
+  liars:[
+    { id:'pei',  text:'说了两处假话，且两处都落在关键命题上：否认窗下的脚印，否认自己去过后巷。他是唯一一个在关键事实上被多人同时指认的人。' },
+    { id:'su',   text:'唱完曲（亥时末）就下楼去后院与胡铁山私会，怕人知道，谎称唱到子时。她"看见有人翻窗"是真的——她确实看见了，只是不敢当场说破。' },
+    { id:'hu',   text:'当夜去后巷赌钱输了银子，怕被当成凶手，谎称整夜在房。他看见的脚印和翻窗人影都是真的。' },
+    { id:'xuan', text:'子时不在佛龛前，而是去后门想趁夜离开云渡镇——他欠了债，怕债主寻上门。后巷的动静他其实看见了，但不愿承认自己半夜在外走动，于是连那扇窗也一并否认。' },
+    { id:'ruo',  text:'全程说了真话。她是唯一一个没有隐瞒的人。' }
+  ]
+};
+
+/* ══════════════════════════════════════════════
+   工具
+   ══════════════════════════════════════════════ */
+
+function el(tag, cls, text){
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = text;
+  return e;
+}
+function factById(id){ for (var i=0;i<FACTS.length;i++) if (FACTS[i].id===id) return FACTS[i]; return null; }
+function witById(id){ for (var i=0;i<WITNESSES.length;i++) if (WITNESSES[i].id===id) return WITNESSES[i]; return null; }
+function motiveById(id){ for (var i=0;i<MOTIVES.length;i++) if (MOTIVES[i].id===id) return MOTIVES[i]; return null; }
+
+var STORE_KEY = 'dayliydo.truth-ledger.v1';
+var state = { rulings:{}, who:'', why:'' };
+
+function rulingOf(fid){
+  var v = state.rulings[fid];
+  return (v === 1 || v === 0) ? v : -1;
+}
+
+/* ══════════════════════════════════════════════
+   持久化
+   ══════════════════════════════════════════════ */
+
+function save(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ }
+}
+function load(){
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    var obj = JSON.parse(raw);
+    if (obj && typeof obj === 'object'){
+      if (obj.rulings && typeof obj.rulings === 'object'){
+        for (var i=0;i<FACTS.length;i++){
+          var v = obj.rulings[FACTS[i].id];
+          if (v === 1 || v === 0) state.rulings[FACTS[i].id] = v;
+        }
+      }
+      if (typeof obj.who === 'string' && witById(obj.who)) state.who = obj.who;
+      if (typeof obj.why === 'string' && motiveById(obj.why)) state.why = obj.why;
+    }
+  } catch (e) { /* 损坏数据直接丢弃 */ }
+}
+
+/* ══════════════════════════════════════════════
+   真相码：base64url(JSON)  — 只含已知 id 与整数
+   ══════════════════════════════════════════════ */
+
+function b64urlEncode(str){
+  var b = btoa(str);
+  return b.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64urlDecode(s){
+  var t = s.replace(/-/g,'+').replace(/_/g,'/');
+  while (t.length % 4) t += '=';
+  return atob(t);
+}
+function makeCode(){
+  var r = [];
+  for (var i=0;i<FACTS.length;i++) r.push(rulingOf(FACTS[i].id) === -1 ? 0 : (rulingOf(FACTS[i].id) === 1 ? 1 : 2));
+  var payload = { v:1, r:r, w:state.who || '', m:state.why || '' };
+  return 'TL1.' + b64urlEncode(JSON.stringify(payload));
+}
+function readCode(text){
+  var raw = String(text || '').trim();
+  if (raw.indexOf('TL1.') !== 0) return null;
+  var json;
+  try { json = b64urlDecode(raw.slice(4)); } catch (e) { return null; }
+  var obj;
+  try { obj = JSON.parse(json); } catch (e) { return null; }
+  if (!obj || obj.v !== 1 || !(obj.r instanceof Array) || obj.r.length !== FACTS.length) return null;
+  var out = { rulings:{}, who:'', why:'' };
+  for (var i=0;i<FACTS.length;i++){
+    var v = obj.r[i];
+    if (v !== 0 && v !== 1 && v !== 2) return null;
+    if (v === 1) out.rulings[FACTS[i].id] = 1;
+    else if (v === 2) out.rulings[FACTS[i].id] = 0;
+  }
+  if (typeof obj.w === 'string' && witById(obj.w)) out.who = obj.w;
+  if (typeof obj.m === 'string' && motiveById(obj.m)) out.why = obj.m;
+  return out;
+}
+
+/* ══════════════════════════════════════════════
+   渲染：矩阵
+   ══════════════════════════════════════════════ */
+
+var selCell = null;
+var matrixEl = document.getElementById('matrix');
+var detailEl = document.getElementById('detail');
+var heatEl   = document.getElementById('heat');
+
+function glyph(v){ return v === 1 ? '✓' : (v === 0 ? '✗' : '·'); }
+
+function buildMatrix(){
+  matrixEl.textContent = '';
+
+  var thead = el('thead');
+  var hr = el('tr');
+  hr.appendChild(el('th', null, '命题'));
+  for (var w=0; w<WITNESSES.length; w++){
+    var th = el('th','who');
+    th.appendChild(el('b', null, WITNESSES[w].name));
+    th.appendChild(el('span', null, WITNESSES[w].role));
+    hr.appendChild(th);
+  }
+  hr.appendChild(el('th', null, '你的裁定'));
+  thead.appendChild(hr);
+  matrixEl.appendChild(thead);
+
+  var tbody = el('tbody');
+  for (var i=0;i<FACTS.length;i++){
+    var f = FACTS[i];
+    var tr = el('tr');
+
+    var td = el('td','fact');
+    if (f.key) td.appendChild(el('span','key','关键'));
+    td.appendChild(document.createTextNode(f.text));
+    tr.appendChild(td);
+
+    for (var j=0;j<WITNESSES.length;j++){
+      var W = WITNESSES[j];
+      var line = W.lines[f.id];
+      var v = line ? line.v : -1;
+      var c = el('td','cell v' + v, glyph(v));
+      c.setAttribute('data-w', W.id);
+      c.setAttribute('data-f', f.id);
+      c.setAttribute('title', W.name + ' · ' + (line ? line.t : '未提及'));
+      c.addEventListener('click', onCellClick);
+      tr.appendChild(c);
+    }
+
+    var rt = el('td');
+    var seg = el('div','seg');
+    var opts = [{v:-1,label:'未定'},{v:1,label:'真'},{v:0,label:'假'}];
+    for (var k=0;k<opts.length;k++){
+      (function(o, fid){
+        var b = el('button', null, o.label);
+        b.setAttribute('type','button');
+        b.setAttribute('data-v', String(o.v));
+        b.setAttribute('data-f', fid);
+        b.addEventListener('click', function(){
+          if (o.v === -1) delete state.rulings[fid];
+          else state.rulings[fid] = o.v;
+          save(); render();
+        });
+        seg.appendChild(b);
+      })(opts[k], f.id);
+    }
+    rt.appendChild(seg);
+    tr.appendChild(rt);
+    tbody.appendChild(tr);
+  }
+  matrixEl.appendChild(tbody);
+}
+
+function onCellClick(ev){
+  var w = ev.currentTarget.getAttribute('data-w');
+  var f = ev.currentTarget.getAttribute('data-f');
+  showDetail(w, f);
+  if (selCell) selCell.classList.remove('sel');
+  ev.currentTarget.classList.add('sel');
+  selCell = ev.currentTarget;
+}
+
+function showDetail(wid, fid){
+  var W = witById(wid), F = factById(fid);
+  if (!W || !F) return;
+  var line = W.lines[fid];
+
+  detailEl.textContent = '';
+  detailEl.appendChild(el('div','who', W.name + ' · ' + W.role));
+
+  if (!line){
+    detailEl.appendChild(el('p','quote','（对这条命题，他一个字也没提。）'));
+  } else {
+    detailEl.appendChild(el('p','quote','「' + line.t + '」'));
+  }
+
+  var r = rulingOf(fid);
+  if (r !== -1 && line){
+    var same = (line.v === r);
+    var j = el('div','judge ' + (same ? 'ok' : 'bad'));
+    var verdictWord = r === 1 ? '真' : '假';
+    if (line.v === -1){
+      j.textContent = '你的裁定：此命题为「' + verdictWord + '」。他未表态，无从冲突。';
+    } else if (same){
+      j.textContent = '你的裁定：此命题为「' + verdictWord + '」。他与你一致。';
+    } else {
+      j.textContent = '你的裁定：此命题为「' + verdictWord + '」。他与你冲突。';
+    }
+    detailEl.appendChild(j);
+  } else if (r === -1){
+    detailEl.appendChild(el('div','judge','先给这条命题下一个裁定，再看它和谁对不上。'));
+  }
+}
+
+/* ══════════════════════════════════════════════
+   渲染：进度 / 热力 / 下拉
+   ══════════════════════════════════════════════ */
+
+function render(){
+  // 裁定按钮状态 + 格子命中标记
+  var segs = matrixEl.querySelectorAll('.seg button');
+  for (var i=0;i<segs.length;i++){
+    var b = segs[i];
+    var fid = b.getAttribute('data-f');
+    var v = parseInt(b.getAttribute('data-v'), 10);
+    var r = rulingOf(fid);
+    if (v === r) b.classList.add('on'); else b.classList.remove('on');
+  }
+
+  var cells = matrixEl.querySelectorAll('.cell');
+  for (var c=0;c<cells.length;c++){
+    var cell = cells[c];
+    var cf = cell.getAttribute('data-f');
+    var cw = cell.getAttribute('data-w');
+    var rr = rulingOf(cf);
+    cell.classList.remove('hit','miss');
+    if (rr !== -1){
+      var ln = witById(cw).lines[cf];
+      if (ln && ln.v !== -1){
+        if (ln.v === rr) cell.classList.add('hit');
+        else cell.classList.add('miss');
+      }
+    }
+  }
+
+  // 进度
+  var keyTotal = 0, keyDone = 0;
+  for (var k=0;k<FACTS.length;k++){
+    if (FACTS[k].key){
+      keyTotal++;
+      if (rulingOf(FACTS[k].id) !== -1) keyDone++;
+    }
+  }
+  document.getElementById('progNum').textContent = keyDone + ' / ' + keyTotal;
+  document.getElementById('progBar').style.width = (keyTotal ? (keyDone/keyTotal*100) : 0) + '%';
+
+  renderHeat();
+  renderSelects();
+}
+
+function renderHeat(){
+  heatEl.textContent = '';
+  var rows = [];
+  for (var i=0;i<WITNESSES.length;i++){
+    var W = WITNESSES[i], spoken = 0, bad = 0, keyBad = 0;
+    for (var j=0;j<FACTS.length;j++){
+      var F = FACTS[j];
+      var r = rulingOf(F.id);
+      if (r === -1) continue;
+      var ln = W.lines[F.id];
+      if (!ln || ln.v === -1) continue;
+      spoken++;
+      if (ln.v !== r){
+        bad++;
+        if (F.key) keyBad++;
+      }
+    }
+    rows.push({ w:W, spoken:spoken, bad:bad, keyBad:keyBad });
+  }
+
+  rows.sort(function(a,b){
+    if (b.keyBad !== a.keyBad) return b.keyBad - a.keyBad;
+    if (b.bad !== a.bad) return b.bad - a.bad;
+    return b.spoken - a.spoken;
+  });
+
+  for (var m=0;m<rows.length;m++){
+    var R = rows[m];
+    var row = el('div','heat-row');
+
+    var nm = el('div','heat-name', R.w.name);
+    nm.appendChild(el('span', null, R.w.role));
+    row.appendChild(nm);
+
+    var bar = el('div','heat-bar');
+    var fill = el('i');
+    var ratio = R.spoken ? (R.bad / R.spoken) : 0;
+    fill.style.width = (ratio * 100).toFixed(1) + '%';
+    fill.style.background = ratio > 0.5 ? 'var(--no)' : (ratio > 0 ? 'var(--accent)' : 'var(--yes)');
+    bar.appendChild(fill);
+    row.appendChild(bar);
+
+    var num = el('div','heat-num', R.bad + '/' + R.spoken);
+    num.setAttribute('title','与你的裁定冲突 ' + R.bad + ' 处，其中关键命题 ' + R.keyBad + ' 处');
+    row.appendChild(num);
+    heatEl.appendChild(row);
+  }
+}
+
+function renderSelects(){
+  var sw = document.getElementById('selWho');
+  var sy = document.getElementById('selWhy');
+
+  if (!sw.options.length){
+    var o0 = el('option', null, '—— 请指认 ——'); o0.value = ''; sw.appendChild(o0);
+    for (var i=0;i<WITNESSES.length;i++){
+      var o = el('option', null, WITNESSES[i].name + '（' + WITNESSES[i].role + '）');
+      o.value = WITNESSES[i].id; sw.appendChild(o);
+    }
+    var o1 = el('option', null, '—— 请选择 ——'); o1.value = ''; sy.appendChild(o1);
+    for (var j=0;j<MOTIVES.length;j++){
+      var om = el('option', null, MOTIVES[j].label);
+      om.value = MOTIVES[j].id; sy.appendChild(om);
+    }
+    sw.addEventListener('change', function(){ state.who = sw.value; save(); });
+    sy.addEventListener('change', function(){ state.why = sy.value; save(); });
+  }
+  sw.value = state.who;
+  sy.value = state.why;
+}
+
+/* ══════════════════════════════════════════════
+   结案
+   ══════════════════════════════════════════════ */
+
+function submit(){
+  if (!state.who){ toast('先指认凶手。'); return; }
+  if (!state.why){ toast('再选一个动机。'); return; }
+
+  var score = 0, checks = [];
+  for (var i=0;i<FACTS.length;i++){
+    if (!FACTS[i].key) continue;
+    var r = rulingOf(FACTS[i].id);
+    var ok = (r === FACTS[i].truth);
+    if (ok) score++;
+    checks.push({ f:FACTS[i], mine:r, ok:ok });
+  }
+  var whoOk = (state.who === TRUTH.who);
+  var whyOk = (state.why === TRUTH.why);
+  if (whoOk) score += 2;
+  if (whyOk) score += 1;
+
+  var title;
+  if (score >= 6) title = '明镜高悬';
+  else if (score >= 5) title = '抽丝剥茧';
+  else if (score >= 3) title = '雾里看花';
+  else title = '被人牵着走';
+
+  showModal({
+    score:score, max:6, title:title,
+    checks:checks, whoOk:whoOk, whyOk:whyOk
+  });
+}
+
+function showModal(res){
+  var box = document.getElementById('modalInner');
+  box.textContent = '';
+
+  box.appendChild(el('h2', null, res.title));
+  box.appendChild(el('p','score-line','得分 ' + res.score + ' / ' + res.max + '（关键命题 3 + 凶手 2 + 动机 1）'));
+
+  // 凶手
+  box.appendChild(el('h3', null, '凶手'));
+  var culprit = witById(TRUTH.who);
+  box.appendChild(el('p', null, (res.whoOk ? '你指认对了。' : '你指认的是' + witById(state.who).name + '，错了。') + '真凶是 ' + culprit.name + '（' + culprit.role + '）。'));
+  box.appendChild(el('p', null, REVEAL.summary));
+
+  // 动机
+  box.appendChild(el('h3', null, '动机'));
+  box.appendChild(el('p', null, (res.whyOk ? '你选对了。' : '你选的是「' + motiveById(state.why).label + '」，不对。') + '真正的动机是「' + motiveById(TRUTH.why).label + '」。'));
+
+  // 关键命题核对
+  box.appendChild(el('h3', null, '关键命题核对'));
+  for (var i=0;i<res.checks.length;i++){
+    var c = res.checks[i];
+    var line = el('div','factcheck');
+    var mark = el('span','mark ' + (c.ok ? 'ok' : 'bad'), c.ok ? '✓' : '✗');
+    line.appendChild(mark);
+    var mine = c.mine === -1 ? '未定' : (c.mine === 1 ? '真' : '假');
+    var real = c.f.truth === 1 ? '真' : '假';
+    line.appendChild(el('span', null, c.f.text + '　（你判：' + mine + '　真相：' + real + '）'));
+    box.appendChild(line);
+  }
+
+  // 真相重构
+  box.appendChild(el('h3', null, '真相重构'));
+  var tl = el('ul','tl');
+  for (var j=0;j<REVEAL.timeline.length;j++){
+    var li = el('li');
+    li.appendChild(el('b', null, REVEAL.timeline[j].t + '　'));
+    li.appendChild(document.createTextNode(REVEAL.timeline[j].s));
+    tl.appendChild(li);
+  }
+  box.appendChild(tl);
+
+  // 其他人的隐瞒
+  box.appendChild(el('h3', null, '其他人的隐瞒'));
+  for (var k=0;k<REVEAL.liars.length;k++){
+    var L = REVEAL.liars[k];
+    var W = witById(L.id);
+    var p = el('div','liar' + (L.id === 'ruo' ? ' clean' : ''));
+    p.appendChild(el('b','who', W.name + '：'));
+    p.appendChild(document.createTextNode(L.text));
+    box.appendChild(p);
+  }
+
+  // 真相码
+  box.appendChild(el('h3', null, '真相码'));
+  box.appendChild(el('p', null, '这串码记录了你全部的裁定与结论。别人粘贴进「导入真相码」，就能在你停下的地方接着推。'));
+  var row = el('div','code-row');
+  var ta = el('textarea');
+  ta.value = makeCode();
+  ta.setAttribute('readonly','readonly');
+  ta.setAttribute('spellcheck','false');
+  row.appendChild(ta);
+  var copyBtn = el('button','btn','复制');
+  copyBtn.setAttribute('type','button');
+  copyBtn.addEventListener('click', function(){
+    ta.select();
+    var done = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(ta.value);
+        done = true;
+      }
+    } catch (e) { done = false; }
+    if (!done){
+      try { done = document.execCommand('copy'); } catch (e2) { done = false; }
+    }
+    toast(done ? '已复制。' : '请手动选中复制。');
+  });
+  row.appendChild(copyBtn);
+  box.appendChild(row);
+
+  var acts = el('div','modal-actions');
+  var close = el('button','btn','继续推演');
+  close.setAttribute('type','button');
+  close.addEventListener('click', function(){ document.getElementById('modal').hidden = true; });
+  acts.appendChild(close);
+  box.appendChild(acts);
+
+  document.getElementById('modal').hidden = false;
+}
+
+/* ══════════════════════════════════════════════
+   提示
+   ══════════════════════════════════════════════ */
+
+var toastTimer = null;
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.hidden = true; }, 2200);
+}
+
+/* ══════════════════════════════════════════════
+   事件绑定 / 启动
+   ══════════════════════════════════════════════ */
+
+document.getElementById('btnSubmit').addEventListener('click', submit);
+
+document.getElementById('btnReset').addEventListener('click', function(){
+  state = { rulings:{}, who:'', why:'' };
+  save();
+  detailEl.textContent = '点击任意格子，读该人的原话。';
+  if (selCell){ selCell.classList.remove('sel'); selCell = null; }
+  render();
+  toast('已重置。');
+});
+
+document.getElementById('btnImport').addEventListener('click', function(){
+  var b = document.getElementById('importBox');
+  b.hidden = !b.hidden;
+  if (!b.hidden) document.getElementById('importArea').focus();
+});
+
+document.getElementById('btnImportGo').addEventListener('click', function(){
+  var txt = document.getElementById('importArea').value;
+  var parsed = readCode(txt);
+  if (!parsed){ toast('真相码无效。'); return; }
+  state = parsed;
+  save();
+  document.getElementById('importBox').hidden = true;
+  document.getElementById('importArea').value = '';
+  render();
+  toast('已导入。');
+});
+
+document.getElementById('modal').addEventListener('click', function(ev){
+  if (ev.target === this) this.hidden = true;
+});
+
+document.addEventListener('keydown', function(ev){
+  if (ev.key === 'Escape'){
+    var m = document.getElementById('modal');
+    if (!m.hidden){ m.hidden = true; }
+  }
+});
+
+load();
+buildMatrix();
+render();
+
+})();
+</script>
+</body>
+</html>

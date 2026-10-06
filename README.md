@@ -25,6 +25,7 @@
 | 神谕卡牌 | [oracle-deck](oracle-deck/) | TRPG 三级递进神谕判定，命运权重系统，自定义牌组 |
 | 战斗回合追踪器 | [initiative-tracker](initiative-tracker/) | 圆形时间环 + 效果衰减 + 自动轮转 |
 | 命运种子遭遇表 | [encounter-table](encounter-table/) | 确定性种子重放 + 抉择改变后续权重，命运码可分享复现 |
+| 真相账本 | [truth-ledger](truth-ledger/) | 证词矩阵 + 严格多数约束，玩家裁定驱动矛盾热力，真相码可分享 |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

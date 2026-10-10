@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>不在场证明 · 时间地点推演台</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#151b24; --panel2:#1b222c; --line:#2a3441;
+  --text:#e6edf3; --muted:#8b96a5; --accent:#7fa8d4; --acc-dim:#2f4257;
+  --yes:#5cb87a; --no:#e0705f; --none:#5b6675;
+  --r:12px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f2f4f7; --panel:#ffffff; --panel2:#f7f9fb; --line:#dde3ea;
+    --text:#1d2733; --muted:#66748a; --accent:#3d6d9e; --acc-dim:#cddcec;
+    --yes:#2f8b52; --no:#c8503f; --none:#a8b0bb;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1200px; margin:0 auto; padding:26px 16px 56px}
+
+/* ── 头部 ── */
+.hero{border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:16px}
+.kicker{font-size:11.5px; letter-spacing:.24em; color:var(--accent); text-transform:uppercase}
+.hero h1{margin:6px 0 2px; font-size:31px; letter-spacing:.08em; font-weight:600}
+.hero .sub{margin:0; color:var(--muted); font-size:13.5px}
+
+/* ── 案卷条 ── */
+.case{
+  background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
+  border-radius:var(--r); padding:14px 18px; margin-bottom:14px;
+}
+.case .line1{margin:0; font-size:15px}
+.case .line2{margin:6px 0 0; font-size:13.5px; color:var(--muted)}
+.case .line3{margin:8px 0 0; font-size:12.5px; color:var(--muted)}
+.case b{color:var(--accent); font-weight:600}
+.case kbd{
+  background:var(--panel2); border:1px solid var(--line); border-bottom-width:2px;
+  border-radius:5px; padding:1px 5px; font:inherit; font-size:12px; color:var(--text);
+}
+
+.brief{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); margin-bottom:14px; overflow:hidden}
+.brief>summary{
+  cursor:pointer; padding:11px 16px; font-weight:600; letter-spacing:.06em;
+  color:var(--accent); list-style:none; user-select:none; font-size:13.5px;
+}
+.brief>summary::-webkit-details-marker{display:none}
+.brief>summary::before{content:"▸ "; display:inline-block; transition:transform .18s}
+.brief[open]>summary::before{transform:rotate(90deg)}
+.brief-body{padding:2px 18px 16px; border-top:1px solid var(--line)}
+.brief-body p{margin:11px 0; font-size:14px}
+.brief-body p.hint{color:var(--muted); font-size:13px; border-left:3px solid var(--acc-dim); padding-left:12px}
+
+/* ── 工具条 ── */
+.toolbar{display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:14px}
+.prog{display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--muted); flex-wrap:wrap}
+.bar{width:132px; height:6px; background:var(--panel2); border:1px solid var(--line); border-radius:99px; overflow:hidden}
+.bar i{display:block; height:100%; width:0; background:var(--accent); transition:width .25s}
+.tally{font-variant-numeric:tabular-nums}
+.tally b{font-weight:600}
+.tally .a{color:var(--yes)}
+.tally .r{color:var(--no)}
+.tools{display:flex; gap:8px; flex-wrap:wrap}
+.btn{
+  background:var(--accent); color:#0b1520; border:none; border-radius:8px;
+  padding:8px 15px; font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+  transition:filter .15s, opacity .15s, border-color .15s, color .15s;
+}
+.btn:hover{filter:brightness(1.1)}
+.btn:disabled{opacity:.4; cursor:not-allowed}
+.btn.ghost{background:transparent; color:var(--text); border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--accent); color:var(--accent); filter:none}
+
+/* ── 码箱 ── */
+.codebox{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; margin-bottom:14px}
+.codebox h3{margin:0 0 4px; font-size:13px; letter-spacing:.06em; color:var(--accent)}
+.codebox p{margin:0 0 8px; font-size:12.5px; color:var(--muted)}
+.codebox .row{display:flex; gap:8px; align-items:flex-start}
+textarea{
+  flex:1; min-height:56px; resize:vertical; background:var(--panel2); color:var(--text);
+  border:1px solid var(--line); border-radius:8px; padding:8px 11px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5;
+}
+.codebox .gap{height:10px}
+
+/* ── 布局 ── */
+.layout{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:16px; align-items:start}
+@media (max-width:940px){ .layout{grid-template-columns:1fr} }
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:14px}
+
+/* ── 网格 ── */
+.grid-scroll{overflow-x:auto; padding-bottom:4px}
+.grid{border-collapse:separate; border-spacing:5px; width:100%; min-width:790px}
+.grid th, .grid td{text-align:center; vertical-align:middle}
+.grid thead th{
+  font-size:11.5px; font-weight:600; color:var(--muted); letter-spacing:.04em;
+  padding:4px 2px 8px; line-height:1.35;
+}
+.grid thead th em{display:block; font-style:normal; font-size:10px; opacity:.75; font-weight:400}
+.grid thead th.crime{color:var(--accent)}
+.crime-tag{
+  display:inline-block; margin-top:3px; font-size:9.5px; letter-spacing:.1em;
+  border:1px solid var(--acc-dim); color:var(--accent); border-radius:99px; padding:0 6px;
+}
+.grid tbody th{
+  text-align:left; width:112px; padding:6px 8px 6px 4px; font-size:13.5px; font-weight:600; line-height:1.35;
+}
+.grid tbody th span{display:block; font-size:10.5px; color:var(--muted); font-weight:400}
+.grid tbody th .cast{margin-top:3px; font-size:10px; color:var(--accent); font-weight:400}
+
+.cell{
+  padding:5px 3px 4px; border-radius:9px; cursor:pointer; min-width:74px;
+  background:var(--panel2); border:1px solid transparent;
+  transition:background .13s, border-color .13s;
+  user-select:none;
+}
+.cell:hover{border-color:var(--line)}
+.c-claim{font-size:14.5px; font-weight:600; color:var(--muted); line-height:1.3}
+.c-claim .mk{font-size:11px; margin-left:2px; font-weight:400}
+.c-poss{font-size:9.5px; color:var(--muted); margin-top:2px; letter-spacing:.01em; opacity:.85; line-height:1.3}
+.cell.undec .c-claim{opacity:.85}
+.cell.acc{background:rgba(92,184,122,.13)}
+.cell.acc .c-claim{color:var(--yes)}
+.cell.rej{background:rgba(224,112,95,.12)}
+.cell.rej .c-claim{color:var(--no); text-decoration:line-through; text-decoration-thickness:1px}
+.cell.conf{background:rgba(224,112,95,.22); border-color:var(--no)}
+.cell.conf .c-claim{color:var(--no); text-decoration:line-through}
+.cell.conf .c-poss{color:var(--no); opacity:1}
+.cell.sel{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
+.cell.anchor{box-shadow:inset 0 -2px 0 var(--acc-dim)}
+.cell.crimecol.undec{background:rgba(127,168,212,.07)}
+
+.legend{display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:11.5px; color:var(--muted)}
+.legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
+.legend .l-acc{background:rgba(92,184,122,.5)}
+.legend .l-rej{background:rgba(224,112,95,.5)}
+.legend .l-conf{background:rgba(224,112,95,.85)}
+.legend .l-und{background:var(--panel2); border:1px solid var(--line)}
+
+/* ── 详情 ── */
+.detail{
+  margin-top:12px; padding:12px 14px; background:var(--panel2);
+  border:1px solid var(--line); border-radius:10px; font-size:13.5px; color:var(--muted); min-height:96px;
+}
+.detail .who{color:var(--accent); font-weight:600; font-size:13px; letter-spacing:.04em}
+.detail .quote{color:var(--text); font-size:14.5px; line-height:1.7; margin:5px 0 0}
+.detail .meta{font-size:12.5px; margin-top:8px; line-height:1.65}
+.detail .meta.ok{color:var(--yes)}
+.detail .meta.bad{color:var(--no)}
+.detail .meta .k{color:var(--accent)}
+
+/* ── 侧栏 ── */
+.side h2{margin:0 0 3px; font-size:13.5px; letter-spacing:.06em}
+.side h2 + p{margin:0 0 11px; font-size:11.5px; color:var(--muted); line-height:1.5}
+.side .block + .block{margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
+.conf-item{
+  display:block; width:100%; text-align:left; background:rgba(224,112,95,.1);
+  border:1px solid rgba(224,112,95,.35); color:var(--text); border-radius:8px;
+  padding:7px 10px; font:inherit; font-size:12px; cursor:pointer; margin-bottom:7px; line-height:1.5;
+}
+.conf-item:hover{border-color:var(--no)}
+.conf-item b{color:var(--no); font-weight:600}
+.conf-item em{font-style:normal; color:var(--muted)}
+.none-msg{font-size:12px; color:var(--muted); padding:2px 0 4px}
+.crime-box{font-size:12.5px; line-height:1.6}
+.crime-box .who-list{margin-top:6px}
+.crime-box .chip{
+  display:inline-block; background:var(--panel2); border:1px solid var(--line);
+  border-radius:99px; padding:1px 9px; margin:2px 4px 2px 0; font-size:11.5px;
+}
+.crime-box .chip.hot{border-color:var(--accent); color:var(--accent)}
+.crime-box .solo{color:var(--accent); font-weight:600}
+.anchor-item{font-size:12px; color:var(--muted); line-height:1.55; margin-bottom:7px; padding-left:11px; position:relative}
+.anchor-item::before{content:"▚"; position:absolute; left:0; color:var(--acc-dim)}
+.anchor-item b{color:var(--text); font-weight:600}
+
+/* ── 结案 ── */
+.verdict{margin-top:18px; background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:16px}
+.verdict h2{margin:0 0 4px; font-size:15px; letter-spacing:.06em}
+.verdict p.sub{margin:0 0 14px; font-size:12.5px; color:var(--muted)}
+.vrow{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end}
+.field{display:flex; flex-direction:column; gap:5px}
+.field label{font-size:11.5px; color:var(--muted)}
+select{
+  background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:8px;
+  padding:8px 11px; font:inherit; font-size:13.5px; min-width:190px; cursor:pointer;
+}
+select:focus{outline:none; border-color:var(--accent)}
+
+/* ── 弹层 ── */
+.modal{
+  position:fixed; inset:0; background:rgba(4,7,11,.74); z-index:50;
+  display:flex; align-items:flex-start; justify-content:center; padding:34px 14px;
+}
+.modal[hidden]{display:none}
+.modal-inner{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  max-width:720px; width:100%; max-height:84vh; overflow-y:auto; padding:22px 24px 24px;
+}
+.modal-inner h2{margin:0 0 4px; font-size:23px; letter-spacing:.06em}
+.modal-inner .score-line{margin:0 0 4px; font-size:13px; color:var(--muted)}
+.modal-inner h3{
+  margin:20px 0 7px; font-size:13px; letter-spacing:.08em; color:var(--accent);
+  border-bottom:1px solid var(--line); padding-bottom:5px;
+}
+.modal-inner p{margin:7px 0; font-size:14px; line-height:1.7}
+.modal-inner ul{margin:7px 0; padding-left:19px}
+.modal-inner li{font-size:13.5px; line-height:1.7; margin-bottom:6px}
+.modal-inner li b{color:var(--accent)}
+.factcheck{display:flex; gap:9px; align-items:flex-start; font-size:13px; margin:6px 0; line-height:1.6}
+.factcheck .mark{flex:0 0 auto; font-weight:700; width:14px}
+.factcheck .mark.ok{color:var(--yes)}
+.factcheck .mark.bad{color:var(--no)}
+.liar{font-size:13px; line-height:1.65; margin:8px 0; color:var(--muted)}
+.liar b{color:var(--text); font-weight:600}
+.liar.clean b{color:var(--yes)}
+.punch{
+  margin-top:12px; padding:11px 14px; border-left:3px solid var(--accent);
+  background:var(--panel2); border-radius:0 8px 8px 0; font-size:13.5px; color:var(--text);
+}
+.code-row{display:flex; gap:8px; align-items:flex-start}
+.modal-actions{margin-top:20px; display:flex; gap:9px; justify-content:flex-end}
+
+.toast{
+  position:fixed; left:50%; bottom:30px; transform:translateX(-50%);
+  background:var(--panel2); border:1px solid var(--accent); color:var(--text);
+  padding:9px 18px; border-radius:99px; font-size:13px; z-index:60;
+  box-shadow:0 8px 26px rgba(0,0,0,.4);
+}
+.toast[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">推理桌面 · 罗生门</div>
+    <h1>不在场证明</h1>
+    <p class="sub">把六个嫌犯的时间 × 地点摊成一张网格，用你自己的裁定去填。</p>
+  </header>
+
+  <section class="case">
+    <p class="line1">柳宅命案 · 次日清晨。老爷<b>柳三</b>死在<b>书房</b>，后脑钝器伤。</p>
+    <p class="line2">案发时间：<b>22:20–22:40</b>（第五段）。宅子当晚只有这六个人。</p>
+    <p class="line3">单击任意格子循环切换裁定：<kbd>未决</kbd> → <kbd>采信</kbd> → <kbd>推翻</kbd>。同一时刻只能待在相邻的一间屋里，所以一份自相矛盾的裁定会让整行一起塌掉。</p>
+  </section>
+
+  <details class="brief" open>
+    <summary>案卷 · 这座宅子的平面与当晚</summary>
+    <div class="brief-body">
+      <p>柳宅不大，六间屋：<b>前厅</b>、<b>厨房</b>、<b>花园</b>、<b>书房</b>、<b>阁楼</b>、<b>门房</b>。走廊连成一条回路，从任意一间走到相邻的一间，恰好是一段时间。</p>
+      <p>前厅通厨房、花园、书房；厨房只通前厅与花园；花园通前厅、厨房与门房；书房通前厅与阁楼；阁楼只通书房；门房只通花园。</p>
+      <p class="hint">留意阁楼：它只有一个出口，就是书房。谁在案发前后进过阁楼，就等于承认自己当时在书房。</p>
+      <p class="hint">网格里带下划线的格子是<b>铁证</b>——那几处有人同时看见，不可推翻。除此之外，谁在撒谎得你自己判断。</p>
+    </div>
+  </details>
+
+  <div class="toolbar">
+    <div class="prog">
+      <span>已判定</span>
+      <span class="bar"><i id="progBar"></i></span>
+      <span class="tally">采信 <b class="a" id="tAcc">0</b> · 推翻 <b class="r" id="tRej">0</b> · 未决 <b id="tUnd">36</b></span>
+    </div>
+    <div class="tools">
+      <button class="btn ghost" type="button" id="btnAll">全部采信</button>
+      <button class="btn ghost" type="button" id="btnCode">判定码</button>
+      <button class="btn ghost" type="button" id="btnReset">重置</button>
+    </div>
+  </div>
+
+  <div class="codebox" id="codeBox" hidden>
+    <h3>判定码</h3>
+    <p>这串码记录了你对每一格的裁定与指认。别人粘贴进下面的框，就能在你停下的地方接着推。</p>
+    <div class="row">
+      <textarea id="codeOut" readonly spellcheck="false"></textarea>
+      <button class="btn" type="button" id="btnCopy">复制</button>
+    </div>
+    <div class="gap"></div>
+    <div class="row">
+      <textarea id="codeIn" placeholder="粘贴判定码，例如 AG1.…" spellcheck="false"></textarea>
+      <button class="btn" type="button" id="btnImport">导入</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <main class="card">
+      <div class="grid-scroll">
+        <table class="grid" id="grid"></table>
+      </div>
+      <div class="legend">
+        <span><i class="l-acc"></i>采信</span>
+        <span><i class="l-rej"></i>推翻（格子下方列出他那时可能还在哪几间屋）</span>
+        <span><i class="l-conf"></i>矛盾</span>
+        <span><i class="l-und"></i>未决</span>
+      </div>
+      <div class="detail" id="detail">点击任意格子，读那个人的原话，看你的裁定把他逼到了哪里。</div>
+    </main>
+
+    <aside class="card side">
+      <div class="block">
+        <h2>矛盾</h2>
+        <p>这些格子的可能地点已经被你自己的裁定清空——它们同时为真是不可能的。</p>
+        <div id="confList"></div>
+      </div>
+      <div class="block">
+        <h2>案发时段</h2>
+        <p>22:20–22:40，谁还能出现在书房。</p>
+        <div class="crime-box" id="crimeBox"></div>
+      </div>
+      <div class="block">
+        <h2>铁证</h2>
+        <p>有人同时看见，不可推翻。</p>
+        <div id="anchorList"></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="verdict">
+    <h2>结案</h2>
+    <p class="sub">判定站得住（没有矛盾，且案发时段确实有人能进书房）才能提交。</p>
+    <div class="vrow">
+      <div class="field">
+        <label for="selWho">你指认的凶手</label>
+        <select id="selWho"></select>
+      </div>
+      <button class="btn" type="button" id="btnSubmit">提交结案</button>
+    </div>
+  </section>
+
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-inner" id="modalInner"></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ══════════════════════════════════════════════
+   模型：地点 · 走廊 · 时段 · 六个人
+   ══════════════════════════════════════════════ */
+
+var PLACES = [
+  { id:'hall',    name:'前厅', ab:'厅', nei:['kitchen','garden','study'] },
+  { id:'kitchen', name:'厨房', ab:'厨', nei:['hall','garden'] },
+  { id:'garden',  name:'花园', ab:'园', nei:['hall','kitchen','gate'] },
+  { id:'study',   name:'书房', ab:'书', nei:['hall','attic'] },
+  { id:'attic',   name:'阁楼', ab:'阁', nei:['study'] },
+  { id:'gate',    name:'门房', ab:'门', nei:['garden'] }
+];
+var PLACE_INDEX = {};
+for (var _i = 0; _i < PLACES.length; _i++) PLACE_INDEX[PLACES[_i].id] = _i;
+
+var ALL_MASK = (1 << PLACES.length) - 1;
+var NEI_MASK = [], EXPAND = [];
+(function(){
+  for (var i = 0; i < PLACES.length; i++){
+    var m = 1 << i;
+    for (var j = 0; j < PLACES[i].nei.length; j++) m |= 1 << PLACE_INDEX[PLACES[i].nei[j]];
+    NEI_MASK[i] = m;
+  }
+  for (var k = 0; k <= ALL_MASK; k++){
+    var e = 0;
+    for (var b = 0; b < PLACES.length; b++) if (k & (1 << b)) e |= NEI_MASK[b];
+    EXPAND[k] = e;
+  }
+})();
+
+function maskOf(id){ return 1 << PLACE_INDEX[id]; }
+function placeName(id){ return PLACES[PLACE_INDEX[id]].name; }
+function maskNames(mask){
+  var out = [];
+  for (var i = 0; i < PLACES.length; i++) if (mask & (1 << i)) out.push(PLACES[i].name);
+  return out;
+}
+function maskAbs(mask){
+  var out = [];
+  for (var i = 0; i < PLACES.length; i++) if (mask & (1 << i)) out.push(PLACES[i].ab);
+  return out;
+}
+
+var SLOTS = [
+  { name:'第一段', time:'21:00–21:20' },
+  { name:'第二段', time:'21:20–21:40' },
+  { name:'第三段', time:'21:40–22:00' },
+  { name:'第四段', time:'22:00–22:20' },
+  { name:'第五段', time:'22:20–22:40' },
+  { name:'第六段', time:'22:40–23:00' }
+];
+var NS = SLOTS.length;
+
+var CRIME = { slot:4, place:'study' };
+
+var PEOPLE = [
+  {
+    id:'lu', name:'陆伯', role:'管家',
+    claims:['hall','hall','kitchen','kitchen','hall','garden'],
+    truth: ['hall','hall','kitchen','kitchen','hall','garden'],
+    say:[
+      '开宴那会儿我在前厅门口迎着，一屋子客人都瞧见我。',
+      '第一段我没离过前厅，给客人添了两回酒。',
+      '第二段我去厨房催菜，柳婶正忙，我在灶边站了会儿。',
+      '第三段我还在厨房，帮着端了两趟汤。',
+      '第四段我回到前厅招呼客人。老爷那时还在书房会客。',
+      '第五段我去花园巡夜，院墙那头的门我一一拉了拉。'
+    ]
+  },
+  {
+    id:'shen', name:'沈砚', role:'少爷',
+    claims:['garden','garden','hall','study','hall','attic'],
+    truth: ['garden','garden','hall','study','study','attic'],
+    say:[
+      '开宴前我在花园里抽烟，谁爱看谁看。',
+      '第一段我还在园子里。家父训我的话，我不想听。',
+      '第二段我回前厅坐了坐，喝了半盏茶。',
+      '第三段我去书房找账房先生，没找着人。',
+      '第四段我一直在前厅，跟顾大夫说了会儿话。',
+      '第五段我上阁楼翻我的旧琴谱去了。'
+    ]
+  },
+  {
+    id:'bai', name:'白芷', role:'琴师',
+    claims:['hall','attic','hall','kitchen','hall','hall'],
+    truth: ['hall','hall','hall','kitchen','hall','hall'],
+    say:[
+      '开宴我就坐在琴案前，没动过地方。',
+      '第一段我上阁楼取了副新弦——琴弦断了一根。',
+      '第二段我回前厅接着弹。',
+      '第三段我去厨房要了碗热水润嗓子。',
+      '第四段琴声没停过，我就坐在琴案前。',
+      '第五段客人散了，我还在前厅收拾琴。'
+    ]
+  },
+  {
+    id:'gu', name:'顾清', role:'医生',
+    claims:['gate','garden','study','hall','hall','hall'],
+    truth: ['gate','garden','garden','hall','hall','hall'],
+    say:[
+      '我到得晚，先在门房歇了歇脚。',
+      '第一段我在园子里走了一圈，醒酒。',
+      '第二段我在书房翻了半宿药箱，想配一味安神的方子。',
+      '第三段我回前厅坐下，等人来叫我。',
+      '第四段我还在前厅。楼上闷闷响了一声，我没在意。',
+      '第五段有人手划破了，我替他包了包。'
+    ]
+  },
+  {
+    id:'liu', name:'柳婶', role:'厨娘',
+    claims:['kitchen','kitchen','kitchen','gate','kitchen','kitchen'],
+    truth: ['kitchen','kitchen','kitchen','kitchen','kitchen','kitchen'],
+    say:[
+      '开宴的菜是我一勺一勺盛的，我哪有空出去。',
+      '第一段我一直在厨房，两口灶都烧着。',
+      '第二段我还在灶上，阿棠帮我递碗。',
+      '第三段我去门房看了看门闩，怕夜里进人。',
+      '第四段我在厨房收拾灶台。',
+      '第五段我还在厨房，一直没离开。'
+    ]
+  },
+  {
+    id:'tang', name:'阿棠', role:'侍女',
+    claims:['kitchen','kitchen','garden','garden','kitchen','kitchen'],
+    truth: ['kitchen','kitchen','garden','garden','kitchen','kitchen'],
+    say:[
+      '开宴时我在厨房帮柳婶端菜。',
+      '第一段我还在厨房，没出去过。',
+      '第二段我去花园井边打水。园里站着个人，背对着我。',
+      '第三段我还在井边，洗了一摞碗。',
+      '第四段我端着空碗回厨房去了。',
+      '第五段我在厨房擦灶台。'
+    ]
+  }
+];
+var NP = PEOPLE.length;
+
+var ANCHORS = [
+  { p:'lu',  t:0, place:'hall',    note:'开宴时他站在前厅门口迎客，满堂客人都看见了。' },
+  { p:'liu', t:1, place:'kitchen', note:'第二段她在厨房上菜，两个人同时看见她端出汤来。' },
+  { p:'bai', t:4, place:'hall',    note:'第五段琴声一刻没停，琴案就在前厅。' },
+  { p:'gu',  t:5, place:'hall',    note:'第六段他在前厅替人包扎，三个人围着看。' }
+];
+
+var REVEAL = {
+  who: 'shen',
+  summary: '沈砚杀了自己的父亲。开宴前老爷在书房核账，发现家里那面传家的唐镜被典当了——当票上的字是沈砚的。第三段老爷把他叫进书房对质，第四段争执起来，他抄起桌上的镇纸砸中了父亲的后脑。事后他上阁楼，把当票塞进旧琴谱里。',
+  punch: '阁楼只有书房一个入口，楼梯窄得只容一人。他躲进阁楼的同时，也把自己钉死在了书房——第五段他必须在阁楼，那么第四段他就必须在书房，可他偏偏说自己在前厅。',
+  timeline: [
+    { t:'开宴前', s:'老爷在书房核账，发现传家的唐镜不见了，当票上写着沈砚的名字。' },
+    { t:'第一、二段', s:'沈砚在花园里灌了半壶酒，越想越怕，才回前厅坐了坐。' },
+    { t:'第三段', s:'老爷把他叫进书房对质，门是关着的。' },
+    { t:'第四段', s:'争执之间，沈砚抄起桌上的镇纸砸中父亲后脑，随即离开书房。' },
+    { t:'第五段', s:'他上了阁楼，把当票塞进旧琴谱夹层——被送灯上来的阿棠撞见。' },
+    { t:'第六段', s:'众人发现书房里的尸首。前厅的琴声、厨房的灶火，都成了别人身上干净的不在场证明。' }
+  ],
+  liars: [
+    { id:'shen', text:'第四段他说在前厅与顾大夫说话。顾大夫那一段确实在前厅，却从没跟他说过话；而他自己前后两段分别被钉在书房与阁楼，阁楼只通书房——第四段他不可能在前厅。' },
+    { id:'bai',  text:'她第一段其实趴在前厅的琴案上打了个盹（前一夜通宵赶工），怕被扣工钱，就顺手把"取琴弦"挪到了第一段。琴案到阁楼要过两道走廊，一段时间走不到。' },
+    { id:'gu',   text:'他第二段其实在花园里跟阿棠说了两句话——托她打听柳婶的病。他不愿让人说闲话，便谎称在书房翻药箱。阿棠那句"园里站着个人，背对着我"，说的正是他。' },
+    { id:'liu',  text:'她第三段其实还在厨房，偷偷喝了两口酒。怕主家知道，随口说去了门房看门闩——厨房到门房要绕两段路，一段时间根本走不通。' }
+  ],
+  honest: [
+    { id:'lu',   text:'陆伯整晚说的都是真话。他巡夜时拉的每一道门闩，后来都成了证词。' },
+    { id:'tang', text:'阿棠也一句没编。她不知道自己在花园里撞见的人是谁，所以没说出口。' }
+  ]
+};
+
+/* ══════════════════════════════════════════════
+   求解器
+   state[p][t]：0 未决 / 1 采信 / 2 推翻
+   ══════════════════════════════════════════════ */
+
+function solve(state){
+  var S = [], p, t, i;
+  for (p = 0; p < NP; p++){
+    S[p] = [];
+    for (t = 0; t < NS; t++) S[p][t] = ALL_MASK;
+  }
+  for (i = 0; i < ANCHORS.length; i++){
+    var a = ANCHORS[i];
+    S[personIndex(a.p)][a.t] &= maskOf(a.place);
+  }
+  for (p = 0; p < NP; p++){
+    for (t = 0; t < NS; t++){
+      if (state[p][t] === 1) S[p][t] &= maskOf(PEOPLE[p].claims[t]);
+      else if (state[p][t] === 2) S[p][t] &= ~maskOf(PEOPLE[p].claims[t]);
+    }
+  }
+  var changed = true, guard = 0;
+  while (changed && guard++ < 80){
+    changed = false;
+    for (p = 0; p < NP; p++){
+      for (t = 0; t < NS; t++){
+        if (t > 0){
+          var f = S[p][t] & EXPAND[S[p][t-1]];
+          if (f !== S[p][t]){ S[p][t] = f; changed = true; }
+        }
+        if (t < NS - 1){
+          var b = S[p][t] & EXPAND[S[p][t+1]];
+          if (b !== S[p][t]){ S[p][t] = b; changed = true; }
+        }
+      }
+    }
+  }
+  return S;
+}
+
+function personIndex(id){
+  for (var i = 0; i < NP; i++) if (PEOPLE[i].id === id) return i;
+  return -1;
+}
+function personById(id){ return PEOPLE[personIndex(id)]; }
+function isAnchor(p, t){
+  for (var i = 0; i < ANCHORS.length; i++)
+    if (personIndex(ANCHORS[i].p) === p && ANCHORS[i].t === t) return true;
+  return false;
+}
+function anchorAt(p, t){
+  for (var i = 0; i < ANCHORS.length; i++)
+    if (personIndex(ANCHORS[i].p) === p && ANCHORS[i].t === t) return ANCHORS[i];
+  return null;
+}
+function conflicts(S){
+  var out = [];
+  for (var p = 0; p < NP; p++)
+    for (var t = 0; t < NS; t++)
+      if (S[p][t] === 0) out.push({ p:p, t:t });
+  return out;
+}
+function crimeCandidates(S){
+  var out = [];
+  for (var p = 0; p < NP; p++)
+    if (S[p][CRIME.slot] & maskOf(CRIME.place)) out.push(p);
+  return out;
+}
+function accepted(state){
+  var n = 0;
+  for (var p = 0; p < NP; p++) for (var t = 0; t < NS; t++) if (state[p][t] === 1) n++;
+  return n;
+}
+function rejected(state){
+  var n = 0;
+  for (var p = 0; p < NP; p++) for (var t = 0; t < NS; t++) if (state[p][t] === 2) n++;
+  return n;
+}
+function emptyState(){
+  var s = [];
+  for (var p = 0; p < NP; p++){ s[p] = []; for (var t = 0; t < NS; t++) s[p][t] = 0; }
+  return s;
+}
+function fullState(){
+  var s = [];
+  for (var p = 0; p < NP; p++){ s[p] = []; for (var t = 0; t < NS; t++) s[p][t] = 1; }
+  return s;
+}
+
+/* ══════════════════════════════════════════════
+   工具与持久化
+   ══════════════════════════════════════════════ */
+
+function el(tag, cls, text){
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = text;
+  return e;
+}
+
+var STORE_KEY = 'dayliydo.alibi-grid.v1';
+var state = emptyState();
+var accused = '';
+var sel = null;
+
+function save(){
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ v:1, s:state, w:accused })); } catch (e) {}
+}
+function load(){
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    var obj = JSON.parse(raw);
+    if (!obj || obj.v !== 1) return;
+    if (obj.s instanceof Array && obj.s.length === NP){
+      for (var p = 0; p < NP; p++){
+        if (!(obj.s[p] instanceof Array) || obj.s[p].length !== NS) continue;
+        for (var t = 0; t < NS; t++){
+          var v = obj.s[p][t];
+          if (v === 1 || v === 2) state[p][t] = v;
+        }
+      }
+    }
+    if (typeof obj.w === 'string' && personIndex(obj.w) >= 0) accused = obj.w;
+  } catch (e) {}
+}
+
+/* ══════════════════════════════════════════════
+   判定码：base64url(JSON) —— 只含 0/1/2 与已知 id
+   ══════════════════════════════════════════════ */
+
+function b64urlEncode(str){
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function b64urlDecode(s){
+  var t = String(s).replace(/-/g,'+').replace(/_/g,'/');
+  while (t.length % 4) t += '=';
+  return atob(t);
+}
+function makeCode(){
+  var r = [];
+  for (var p = 0; p < NP; p++) for (var t = 0; t < NS; t++) r.push(state[p][t]);
+  return 'AG1.' + b64urlEncode(JSON.stringify({ v:1, r:r, w:accused }));
+}
+function readCode(text){
+  var raw = String(text || '').trim();
+  if (raw.indexOf('AG1.') !== 0) return null;
+  var json;
+  try { json = b64urlDecode(raw.slice(4)); } catch (e) { return null; }
+  var obj;
+  try { obj = JSON.parse(json); } catch (e) { return null; }
+  if (!obj || obj.v !== 1) return null;
+  if (!(obj.r instanceof Array) || obj.r.length !== NP * NS) return null;
+  var s = emptyState(), i = 0;
+  for (var p = 0; p < NP; p++){
+    for (var t = 0; t < NS; t++){
+      var v = obj.r[i++];
+      if (v !== 0 && v !== 1 && v !== 2) return null;
+      s[p][t] = v;
+    }
+  }
+  if (typeof obj.w !== 'string') return null;
+  if (obj.w !== '' && personIndex(obj.w) < 0) return null;
+  return { s:s, w:obj.w };
+}
+
+/* ══════════════════════════════════════════════
+   渲染：网格
+   ══════════════════════════════════════════════ */
+
+var gridEl   = document.getElementById('grid');
+var detailEl = document.getElementById('detail');
+var confEl   = document.getElementById('confList');
+var crimeEl  = document.getElementById('crimeBox');
+var anchorEl = document.getElementById('anchorList');
+var cellRef  = [];
+
+function buildGrid(){
+  gridEl.textContent = '';
+  cellRef = [];
+
+  var thead = el('thead');
+  var hr = el('tr');
+  hr.appendChild(el('th', null, '人物'));
+  for (var t = 0; t < NS; t++){
+    var th = el('th', t === CRIME.slot ? 'crime' : null);
+    th.appendChild(document.createTextNode(SLOTS[t].name));
+    th.appendChild(el('em', null, SLOTS[t].time));
+    if (t === CRIME.slot) th.appendChild(el('span','crime-tag','案发'));
+    hr.appendChild(th);
+  }
+  thead.appendChild(hr);
+  gridEl.appendChild(thead);
+
+  var tbody = el('tbody');
+  for (var p = 0; p < NP; p++){
+    var P = PEOPLE[p];
+    var tr = el('tr');
+
+    var thp = el('th');
+    thp.appendChild(document.createTextNode(P.name));
+    thp.appendChild(el('span', null, P.role));
+    tr.appendChild(thp);
+
+    var rowRefs = [];
+    for (var s = 0; s < NS; s++){
+      var td = el('td','cell');
+      td.setAttribute('data-p', String(p));
+      td.setAttribute('data-t', String(s));
+      td.addEventListener('click', onCellClick);
+      tr.appendChild(td);
+      rowRefs.push(td);
+    }
+    cellRef.push(rowRefs);
+    tbody.appendChild(tr);
+  }
+  gridEl.appendChild(tbody);
+}
+
+function onCellClick(ev){
+  var p = parseInt(ev.currentTarget.getAttribute('data-p'), 10);
+  var t = parseInt(ev.currentTarget.getAttribute('data-t'), 10);
+  if (isAnchor(p, t)){
+    toast('这一格是铁证，改不了。');
+    sel = { p:p, t:t };
+    render();
+    return;
+  }
+  var v = state[p][t];
+  state[p][t] = (v === 0) ? 1 : (v === 1 ? 2 : 0);
+  sel = { p:p, t:t };
+  save();
+  render();
+}
+
+function render(){
+  var S = solve(state);
+  var conf = conflicts(S);
+
+  for (var p = 0; p < NP; p++){
+    for (var t = 0; t < NS; t++){
+      var cell = cellRef[p][t];
+      var st = state[p][t];
+      var cls = 'cell';
+      if (t === CRIME.slot) cls += ' crimecol';
+      if (isAnchor(p, t)) cls += ' anchor';
+      if (S[p][t] === 0) cls += ' conf';
+      else if (st === 1) cls += ' acc';
+      else if (st === 2) cls += ' rej';
+      else cls += ' undec';
+      if (sel && sel.p === p && sel.t === t) cls += ' sel';
+      cell.className = cls;
+
+      cell.textContent = '';
+      var claim = el('div','c-claim');
+      claim.appendChild(document.createTextNode(PLACES[PLACE_INDEX[PEOPLE[p].claims[t]]].ab));
+      if (st === 1) claim.appendChild(el('span','mk','✓'));
+      else if (st === 2) claim.appendChild(el('span','mk','✗'));
+      cell.appendChild(claim);
+
+      var poss = '';
+      if (S[p][t] === 0) poss = '无解';
+      else if (S[p][t] !== ALL_MASK) poss = maskAbs(S[p][t]).join('·');
+      if (poss){
+        var pv = el('div','c-poss', poss);
+        cell.appendChild(pv);
+      }
+
+      var tip = PEOPLE[p].name + ' · ' + SLOTS[t].name + '（' + SLOTS[t].time + '）\n' +
+                '他说的：' + placeName(PEOPLE[p].claims[t]) + '\n' +
+                '「' + PEOPLE[p].say[t] + '」';
+      if (S[p][t] === 0) tip += '\n→ 按你现在的裁定，他这一段时间无处可去。';
+      else if (S[p][t] !== ALL_MASK) tip += '\n→ 可能还在：' + maskNames(S[p][t]).join('、');
+      cell.setAttribute('title', tip);
+    }
+  }
+
+  // 计数
+  var a = accepted(state), r = rejected(state);
+  document.getElementById('tAcc').textContent = String(a);
+  document.getElementById('tRej').textContent = String(r);
+  document.getElementById('tUnd').textContent = String(NP * NS - a - r);
+  document.getElementById('progBar').style.width = ((a + r) / (NP * NS) * 100) + '%';
+
+  renderConflicts(conf);
+  renderCrime(S);
+  renderAnchors();
+  renderDetail(S);
+  renderSelects();
+  document.getElementById('codeOut').value = makeCode();
+}
+
+function renderConflicts(conf){
+  confEl.textContent = '';
+  if (!conf.length){
+    confEl.appendChild(el('div','none-msg','没有矛盾。这份裁定在时间与地点上走得通。'));
+    return;
+  }
+  for (var i = 0; i < conf.length; i++){
+    var c = conf[i];
+    var P = PEOPLE[c.p];
+    var b = el('button','conf-item');
+    b.setAttribute('type','button');
+    b.appendChild(el('b', null, P.name + ' · ' + SLOTS[c.t].name));
+    b.appendChild(el('em', null, '（' + SLOTS[c.t].time + '）按你现在的裁定，他不可能出现在任何一间屋里。'));
+    (function(p, t){
+      b.addEventListener('click', function(){
+        sel = { p:p, t:t };
+        render();
+        var cell = cellRef[p][t];
+        if (cell && cell.scrollIntoView) cell.scrollIntoView({ block:'nearest', inline:'nearest' });
+      });
+    })(c.p, c.t);
+    confEl.appendChild(b);
+  }
+}
+
+function renderCrime(S){
+  crimeEl.textContent = '';
+  var cands = crimeCandidates(S);
+  var head = el('div', null, '案发时段（第五段）他必须在书房。');
+  crimeEl.appendChild(head);
+
+  var box = el('div','who-list');
+  if (!cands.length){
+    box.appendChild(el('span','solo','按你现在的裁定，没有人能进书房——这不可能，凶案就发生在那里。'));
+  } else if (cands.length === 1){
+    var solo = el('span','solo', PEOPLE[cands[0]].name + ' 是唯一能出现在书房的人。');
+    box.appendChild(solo);
+  } else {
+    for (var i = 0; i < cands.length; i++){
+      box.appendChild(el('span','chip', PEOPLE[cands[i]].name));
+    }
+  }
+  crimeEl.appendChild(box);
+
+  if (cands.length === 1){
+    var extra = el('div', null, '指认他，再提交结案。');
+    extra.style.marginTop = '8px';
+    extra.style.color = 'var(--muted)';
+    crimeEl.appendChild(extra);
+  }
+}
+
+function renderAnchors(){
+  anchorEl.textContent = '';
+  for (var i = 0; i < ANCHORS.length; i++){
+    var a = ANCHORS[i];
+    var P = personByIndexSafe(a.p);
+    var d = el('div','anchor-item');
+    d.appendChild(el('b', null, P.name + ' · ' + SLOTS[a.t].name + ' 在' + placeName(a.place) + '。'));
+    d.appendChild(document.createTextNode(' ' + a.note));
+    anchorEl.appendChild(d);
+  }
+}
+function personByIndexSafe(id){ return PEOPLE[personIndex(id)]; }
+
+function renderDetail(S){
+  if (!sel){ return; }
+  var p = sel.p, t = sel.t, P = PEOPLE[p];
+  var st = state[p][t];
+  detailEl.textContent = '';
+
+  var head = el('div','who', P.name + ' · ' + P.role + ' · ' + SLOTS[t].name + '（' + SLOTS[t].time + '）');
+  detailEl.appendChild(head);
+  detailEl.appendChild(el('p','quote','「' + P.say[t] + '」'));
+
+  var mine = st === 1 ? '采信' : (st === 2 ? '推翻' : '未决');
+  var meta = el('div','meta');
+  meta.appendChild(document.createTextNode('你的裁定：'));
+  meta.appendChild(el('span','k', mine));
+
+  var anch = anchorAt(p, t);
+  if (anch){
+    meta.appendChild(document.createTextNode('　这一格是铁证：' + anch.note));
+  } else if (S[p][t] === 0){
+    meta.appendChild(document.createTextNode('　他这时无处可去——按你现在的裁定，他前后两段的时间接不上。'));
+    meta.className = 'meta bad';
+  } else if (S[p][t] !== ALL_MASK){
+    var set = maskNames(S[p][t]);
+    if (set.length === 1){
+      meta.appendChild(document.createTextNode('　按你现在的裁定，他这时只能在' + set[0] + '。'));
+      meta.className = st === 2 ? 'meta ok' : 'meta';
+    } else {
+      meta.appendChild(document.createTextNode('　按你现在的裁定，他这时可能在：' + set.join('、') + '。'));
+    }
+  } else {
+    meta.appendChild(document.createTextNode('　仅凭铁证还看不出他这时在哪，得靠你对别人的裁定来收紧。'));
+  }
+  detailEl.appendChild(meta);
+}
+
+function renderSelects(){
+  var sw = document.getElementById('selWho');
+  if (!sw.options.length){
+    var o0 = el('option', null, '—— 请指认 ——'); o0.value = ''; sw.appendChild(o0);
+    for (var i = 0; i < NP; i++){
+      var o = el('option', null, PEOPLE[i].name + '（' + PEOPLE[i].role + '）');
+      o.value = PEOPLE[i].id; sw.appendChild(o);
+    }
+    sw.addEventListener('change', function(){ accused = sw.value; save(); render(); });
+  }
+  sw.value = accused;
+}
+
+/* ══════════════════════════════════════════════
+   结案
+   ══════════════════════════════════════════════ */
+
+function submit(){
+  if (!accused){ toast('先指认凶手。'); return; }
+
+  var S = solve(state);
+  var conf = conflicts(S);
+  if (conf.length){
+    var c = conf[0];
+    toast('判定站不住：' + PEOPLE[c.p].name + '在' + SLOTS[c.t].name + '无处可去。');
+    sel = { p:c.p, t:c.t };
+    render();
+    return;
+  }
+  var cands = crimeCandidates(S);
+  if (!cands.length){
+    toast('判定站不住：没有人能在案发时段进入书房。');
+    return;
+  }
+
+  var rej = rejected(state);
+  var lies = [], missed = [], extra = [];
+  for (var p = 0; p < NP; p++){
+    for (var t = 0; t < NS; t++){
+      var isLie = (PEOPLE[p].claims[t] !== PEOPLE[p].truth[t]);
+      if (isLie && state[p][t] === 2) lies.push({ p:p, t:t });
+      else if (isLie && state[p][t] !== 2) missed.push({ p:p, t:t });
+      else if (!isLie && state[p][t] === 2) extra.push({ p:p, t:t });
+    }
+  }
+
+  var whoOk = (accused === REVEAL.who);
+  var title;
+  if (!whoOk) title = '冤枉了人';
+  else if (rej === 4) title = '一眼看穿';
+  else if (rej <= 7) title = '略绕远路';
+  else title = '把所有人都问了一遍';
+
+  showModal({ title:title, whoOk:whoOk, rej:rej, lies:lies, missed:missed, extra:extra, cands:cands });
+}
+
+function showModal(res){
+  var box = document.getElementById('modalInner');
+  box.textContent = '';
+
+  box.appendChild(el('h2', null, res.title));
+  box.appendChild(el('p','score-line','你推翻了 ' + res.rej + ' 格。这份案子最少只要推翻 4 格就能锁定凶手。'));
+
+  box.appendChild(el('h3', null, '凶手'));
+  var culprit = PEOPLE[personIndex(REVEAL.who)];
+  var acc = PEOPLE[personIndex(accused)];
+  box.appendChild(el('p', null,
+    (res.whoOk ? '你指认对了。' : '你指认的是' + acc.name + '，错了。') +
+    '真凶是 ' + culprit.name + '（' + culprit.role + '）。'));
+  box.appendChild(el('p', null, REVEAL.summary));
+  box.appendChild(el('div','punch', REVEAL.punch));
+
+  box.appendChild(el('h3', null, '你漏掉的谎'));
+  if (!res.missed.length){
+    box.appendChild(el('p', null, '一个没漏。'));
+  } else {
+    for (var i = 0; i < res.missed.length; i++){
+      var m = res.missed[i];
+      var P = PEOPLE[m.p];
+      var real = placeName(P.truth[m.t]);
+      box.appendChild(el('div','factcheck',
+        P.name + ' · ' + SLOTS[m.t].name + '：他其实在' + real + '，却说自己是在' +
+        placeName(P.claims[m.t]) + '。'));
+    }
+  }
+
+  box.appendChild(el('h3', null, '其他人的隐瞒'));
+  for (var k = 0; k < REVEAL.liars.length; k++){
+    var L = REVEAL.liars[k];
+    var W = PEOPLE[personIndex(L.id)];
+    var pd = el('div','liar' + (L.id === REVEAL.who ? '' : ''));
+    pd.appendChild(el('b','who', W.name + '：'));
+    pd.appendChild(document.createTextNode(L.text));
+    box.appendChild(pd);
+  }
+  for (var q = 0; q < REVEAL.honest.length; q++){
+    var H = REVEAL.honest[q];
+    var HW = PEOPLE[personIndex(H.id)];
+    var hd = el('div','liar clean');
+    hd.appendChild(el('b', null, HW.name + '：'));
+    hd.appendChild(document.createTextNode(H.text));
+    box.appendChild(hd);
+  }
+
+  box.appendChild(el('h3', null, '真相重构'));
+  var tl = el('ul');
+  for (var j = 0; j < REVEAL.timeline.length; j++){
+    var li = el('li');
+    li.appendChild(el('b', null, REVEAL.timeline[j].t + '　'));
+    li.appendChild(document.createTextNode(REVEAL.timeline[j].s));
+    tl.appendChild(li);
+  }
+  box.appendChild(tl);
+
+  box.appendChild(el('h3', null, '判定码'));
+  box.appendChild(el('p', null, '这串码记录了你全部的裁定与指认，可以发给人接着推，也可以自己留着复盘。'));
+  var row = el('div','code-row');
+  var ta = el('textarea');
+  ta.value = makeCode();
+  ta.setAttribute('readonly','readonly');
+  ta.setAttribute('spellcheck','false');
+  row.appendChild(ta);
+  var cp = el('button','btn','复制');
+  cp.setAttribute('type','button');
+  cp.addEventListener('click', function(){
+    ta.select();
+    var done = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(ta.value);
+        done = true;
+      }
+    } catch (e) { done = false; }
+    if (!done){ try { done = document.execCommand('copy'); } catch (e2) { done = false; } }
+    toast(done ? '已复制。' : '请手动选中复制。');
+  });
+  row.appendChild(cp);
+  box.appendChild(row);
+
+  var acts = el('div','modal-actions');
+  var close = el('button','btn','继续推演');
+  close.setAttribute('type','button');
+  close.addEventListener('click', function(){ document.getElementById('modal').hidden = true; });
+  acts.appendChild(close);
+  box.appendChild(acts);
+
+  document.getElementById('modal').hidden = false;
+}
+
+/* ══════════════════════════════════════════════
+   提示
+   ══════════════════════════════════════════════ */
+
+var toastTimer = null;
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.hidden = true; }, 2400);
+}
+
+/* ══════════════════════════════════════════════
+   事件绑定 / 启动
+   ══════════════════════════════════════════════ */
+
+document.getElementById('btnSubmit').addEventListener('click', submit);
+
+document.getElementById('btnAll').addEventListener('click', function(){
+  state = fullState();
+  sel = null;
+  save();
+  render();
+  toast('已采信全部说辞——看右侧塌成什么样。');
+});
+
+document.getElementById('btnReset').addEventListener('click', function(){
+  state = emptyState();
+  accused = '';
+  sel = null;
+  save();
+  render();
+  toast('已重置。');
+});
+
+document.getElementById('btnCode').addEventListener('click', function(){
+  var b = document.getElementById('codeBox');
+  b.hidden = !b.hidden;
+  if (!b.hidden) document.getElementById('codeOut').value = makeCode();
+});
+
+document.getElementById('btnCopy').addEventListener('click', function(){
+  var ta = document.getElementById('codeOut');
+  ta.select();
+  var done = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value);
+      done = true;
+    }
+  } catch (e) { done = false; }
+  if (!done){ try { done = document.execCommand('copy'); } catch (e2) { done = false; } }
+  toast(done ? '已复制。' : '请手动选中复制。');
+});
+
+document.getElementById('btnImport').addEventListener('click', function(){
+  var ta = document.getElementById('codeIn');
+  var parsed = readCode(ta.value);
+  if (!parsed){ toast('判定码无效。'); return; }
+  state = parsed.s;
+  accused = parsed.w;
+  sel = null;
+  save();
+  ta.value = '';
+  document.getElementById('codeBox').hidden = true;
+  render();
+  toast('已导入。');
+});
+
+document.getElementById('modal').addEventListener('click', function(ev){
+  if (ev.target === this) this.hidden = true;
+});
+
+document.addEventListener('keydown', function(ev){
+  if (ev.key === 'Escape'){
+    var m = document.getElementById('modal');
+    if (!m.hidden){ m.hidden = true; }
+  }
+});
+
+load();
+buildGrid();
+render();
+
+})();
+</script>
+</body>
+</html>

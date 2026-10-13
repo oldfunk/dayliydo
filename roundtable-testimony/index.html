@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圆桌证词 · Roundtable Testimony</title>
+<style>
+:root{
+  --bg:#0d0f14;
+  --bg2:#11141b;
+  --panel:#161a23;
+  --panel2:#1c212d;
+  --line:#2a3142;
+  --line2:#39415a;
+  --text:#e7eaf2;
+  --dim:#8b93a8;
+  --faint:#5b6376;
+  --gold:#d8a657;
+  --gold-soft:rgba(216,166,87,.16);
+  --ok:#3fb96b;
+  --ok-soft:rgba(63,185,107,.14);
+  --bad:#e5484d;
+  --bad-soft:rgba(229,72,77,.14);
+  --pend:#6b7280;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong",serif;
+  --sans:system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #1a1f2c 0%, transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  min-height:100vh;
+  line-height:1.6;
+}
+::selection{background:rgba(216,166,87,.35)}
+
+/* ---------- header ---------- */
+header{
+  max-width:1080px;
+  margin:0 auto;
+  padding:34px 24px 18px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.brand h1{
+  font-family:var(--serif);
+  font-size:clamp(26px,4vw,36px);
+  font-weight:700;
+  letter-spacing:.12em;
+}
+.brand h1 .accent{color:var(--gold)}
+.brand .sub{
+  margin-top:6px;
+  color:var(--dim);
+  font-size:13px;
+  letter-spacing:.18em;
+}
+.badges{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.badge{
+  border:1px solid var(--line);
+  background:var(--panel);
+  border-radius:999px;
+  padding:6px 14px;
+  font-size:13px;
+  color:var(--dim);
+  white-space:nowrap;
+}
+.badge b{color:var(--gold);font-weight:600}
+.badge .moves b{color:var(--text)}
+
+/* ---------- layout ---------- */
+main{
+  max-width:1080px;
+  margin:0 auto;
+  padding:10px 24px 56px;
+  display:grid;
+  grid-template-columns:minmax(360px,480px) 1fr;
+  gap:22px;
+  align-items:start;
+}
+@media (max-width:920px){
+  main{grid-template-columns:1fr}
+  .col-table{order:1}
+  .col-clues{order:2}
+}
+
+/* ---------- panels ---------- */
+.panel{
+  background:linear-gradient(180deg,var(--panel) 0%,var(--bg2) 100%);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px;
+  box-shadow:0 10px 40px rgba(0,0,0,.35);
+}
+.panel-title{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:14px;
+}
+.panel-title h2{
+  font-family:var(--serif);
+  font-size:17px;
+  letter-spacing:.2em;
+  font-weight:600;
+}
+.panel-title .hint-note{
+  color:var(--faint);
+  font-size:12px;
+  letter-spacing:.05em;
+}
+
+/* ---------- roundtable svg ---------- */
+.table-wrap{
+  position:relative;
+  display:flex;
+  justify-content:center;
+}
+#table{width:100%;max-width:420px;height:auto;display:block;user-select:none}
+.seat{cursor:pointer;transition:transform .15s ease}
+.seat:hover{transform:scale(1.06)}
+.seat:focus{outline:none}
+.seat:focus-visible .seat-ring{stroke:var(--gold);stroke-width:2.5}
+.seat-ring{
+  fill:var(--panel2);
+  stroke:var(--line2);
+  stroke-width:1.5;
+  transition:fill .2s ease,stroke .2s ease;
+}
+.seat.has-guest .seat-ring{
+  fill:#232838;
+  stroke:var(--line2);
+}
+.seat.drag-over .seat-ring{stroke:var(--gold);stroke-width:2.5;fill:#2a2f42}
+.seat.hint-glow .hint-glow-ring{opacity:1;animation:pulse 1.6s ease-in-out infinite}
+.hint-glow-ring{
+  fill:none;
+  stroke:var(--gold);
+  stroke-width:2;
+  stroke-dasharray:5 5;
+  opacity:0;
+  transition:opacity .3s ease;
+}
+@keyframes pulse{0%,100%{opacity:.9}50%{opacity:.35}}
+.seat-name{fill:var(--text);font-size:15px;font-weight:600;text-anchor:middle;font-family:var(--serif);letter-spacing:.1em}
+.seat-empty-name{fill:var(--faint);font-size:12px;text-anchor:middle;letter-spacing:.15em}
+.seat-dot{}
+.seat-label{fill:var(--faint);font-size:10.5px;text-anchor:middle;letter-spacing:.2em}
+.table-center-name{fill:var(--dim);font-size:13px;text-anchor:middle;letter-spacing:.35em;font-family:var(--serif)}
+.table-center-sub{fill:var(--faint);font-size:10px;text-anchor:middle;letter-spacing:.15em}
+.seat.killer .seat-ring{stroke:var(--gold);stroke-width:3;fill:#3a2f1c}
+.seat.pop{animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+
+/* ---------- guest pool ---------- */
+.pool{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+@media (max-width:460px){.pool{grid-template-columns:repeat(2,1fr)}}
+.guest{
+  border:1px solid var(--line);
+  background:var(--panel2);
+  border-radius:12px;
+  padding:10px 8px;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .15s ease,transform .15s ease,box-shadow .15s ease;
+  position:relative;
+}
+.guest:hover{transform:translateY(-2px);border-color:var(--line2)}
+.guest .g-dot{
+  width:12px;height:12px;border-radius:50%;
+  display:inline-block;margin-bottom:6px;
+  box-shadow:0 0 10px currentColor;
+}
+.guest .g-name{font-family:var(--serif);font-size:15px;letter-spacing:.15em}
+.guest .g-state{font-size:10.5px;color:var(--faint);margin-top:2px;letter-spacing:.1em}
+.guest.selected{
+  border-color:var(--gold);
+  box-shadow:0 0 0 1px var(--gold),0 6px 24px rgba(216,166,87,.25);
+}
+.guest.placed{opacity:.45}
+.guest.placed .g-state{color:var(--ok)}
+
+/* ---------- clue cards ---------- */
+.clue-list{display:flex;flex-direction:column;gap:10px}
+.clue{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  border:1px solid var(--line);
+  border-left:3px solid var(--pend);
+  background:var(--panel2);
+  border-radius:10px;
+  padding:12px 14px;
+  transition:border-color .25s ease,background .25s ease;
+}
+.clue.ok{border-left-color:var(--ok);background:linear-gradient(90deg,var(--ok-soft),var(--panel2) 55%)}
+.clue.bad{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--panel2) 55%)}
+.clue.bad{animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.clue-idx{
+  flex:none;
+  width:26px;height:26px;
+  border-radius:50%;
+  border:1px solid var(--line2);
+  color:var(--dim);
+  font-size:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);
+  margin-top:2px;
+}
+.clue.ok .clue-idx{border-color:var(--ok);color:var(--ok)}
+.clue.bad .clue-idx{border-color:var(--bad);color:var(--bad)}
+.clue-body{flex:1;min-width:0}
+.clue-text{font-size:15px;letter-spacing:.02em}
+.clue-by{font-size:12px;color:var(--faint);margin-top:3px;font-style:italic}
+.clue-state{
+  flex:none;
+  font-size:13px;
+  color:var(--pend);
+  min-width:20px;
+  text-align:center;
+  margin-top:4px;
+  font-weight:600;
+}
+.clue.ok .clue-state{color:var(--ok)}
+.clue.bad .clue-state{color:var(--bad)}
+
+/* ---------- buttons ---------- */
+.actions{
+  margin-top:16px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.btn{
+  appearance:none;
+  border:1px solid var(--line2);
+  background:var(--panel2);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:14px;
+  letter-spacing:.1em;
+  padding:10px 18px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn.primary{
+  background:linear-gradient(180deg,#d8a657,#b9853f);
+  border-color:#d8a657;
+  color:#1a1408;
+  font-weight:700;
+  flex:1;
+  min-width:160px;
+}
+.btn.primary:hover{filter:brightness(1.1);color:#1a1408}
+.btn:active{transform:scale(.97)}
+
+.progress-note{
+  margin-top:12px;
+  color:var(--dim);
+  font-size:13px;
+  letter-spacing:.05em;
+}
+.progress-note b{color:var(--text)}
+.progress-note .okc{color:var(--ok)}
+.progress-note .badc{color:var(--bad)}
+
+/* ---------- toast ---------- */
+#toast{
+  position:fixed;
+  left:50%;
+  bottom:28px;
+  transform:translate(-50%,20px);
+  background:#20242f;
+  border:1px solid var(--line2);
+  color:var(--text);
+  padding:10px 22px;
+  border-radius:999px;
+  font-size:14px;
+  letter-spacing:.05em;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .3s ease,transform .3s ease;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+  z-index:60;
+  max-width:86vw;
+  text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- win overlay ---------- */
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(6,8,12,.82);
+  backdrop-filter:blur(6px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:50;
+  opacity:1;
+  transition:opacity .35s ease;
+}
+.overlay.hidden{opacity:0;pointer-events:none}
+.win-panel{
+  background:linear-gradient(180deg,#1c202c,#12151d);
+  border:1px solid var(--line2);
+  border-radius:18px;
+  max-width:560px;
+  width:100%;
+  padding:32px 30px;
+  text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);
+  transform:translateY(0);
+  transition:transform .35s ease;
+}
+.overlay.hidden .win-panel{transform:translateY(24px)}
+.win-kicker{
+  color:var(--gold);
+  font-size:12px;
+  letter-spacing:.5em;
+  margin-bottom:10px;
+}
+.win-panel h2{
+  font-family:var(--serif);
+  font-size:24px;
+  letter-spacing:.15em;
+  margin-bottom:14px;
+}
+.win-text{
+  color:var(--dim);
+  font-size:14.5px;
+  line-height:1.9;
+  white-space:pre-line;
+  text-align:left;
+  border-left:2px solid var(--gold);
+  padding-left:14px;
+  margin:16px 0 18px;
+}
+.win-seats{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+  margin-bottom:20px;
+  text-align:left;
+}
+.win-seat{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid var(--line);
+  background:var(--panel2);
+  border-radius:9px;
+  padding:8px 10px;
+  font-size:13px;
+}
+.win-seat .ws-dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+.win-seat .ws-seat{color:var(--faint);font-size:11.5px;margin-left:auto;letter-spacing:.1em}
+.win-seat.killer{border-color:var(--gold);background:var(--gold-soft)}
+
+footer{
+  max-width:1080px;
+  margin:0 auto;
+  padding:0 24px 40px;
+  color:var(--faint);
+  font-size:12px;
+  letter-spacing:.08em;
+  text-align:center;
+}
+footer .rule-note{color:var(--faint)}
+footer b{color:var(--dim);font-weight:600}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>圆桌<span class="accent">证词</span></h1>
+    <div class="sub">ROUNDTABLE TESTIMONY · 罗生门推理台 · 其三</div>
+  </div>
+  <div class="badges">
+    <div class="badge">第 <b id="levelBadge">1</b> 案</div>
+    <div class="badge moves">本局调整 <b id="movesBadge">0</b> 次</div>
+  </div>
+</header>
+
+<main>
+  <!-- 左：圆桌与角色池 -->
+  <section class="col-table">
+    <div class="panel">
+      <div class="panel-title">
+        <h2>墨园晚宴 · 席位</h2>
+        <span class="hint-note">顺时针即为左手边</span>
+      </div>
+      <div class="table-wrap">
+        <svg id="table" viewBox="0 0 340 340" role="img" aria-label="圆桌席位图"></svg>
+      </div>
+      <div class="pool" id="pool"></div>
+      <div class="progress-note" id="tableNote">
+        点击下方客人，再点圆桌空位入座；点已入座者可请其离席。
+      </div>
+    </div>
+  </section>
+
+  <!-- 右：证词与操作 -->
+  <section class="col-clues">
+    <div class="panel">
+      <div class="panel-title">
+        <h2>证词 · 六份供述</h2>
+        <span class="hint-note" id="clueStat">—</span>
+      </div>
+      <div class="clue-list" id="clueList"></div>
+      <div class="actions">
+        <button class="btn primary" id="btnCheck">呈堂证供</button>
+        <button class="btn" id="btnHint">推演提示</button>
+        <button class="btn" id="btnReset">清空席位</button>
+      </div>
+      <div class="progress-note" id="clueNote">
+        六位客人所言<b>句句为真</b>——但人人只见自己眼前一方。灯绿者与席位吻合，灯红者自相矛盾，灰者尚待安置。
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 真相揭示 -->
+<div class="overlay hidden" id="winOverlay" role="dialog" aria-modal="true">
+  <div class="win-panel">
+    <div class="win-kicker">案 件 告 破</div>
+    <h2 id="winTitle">窗边的真相</h2>
+    <div class="win-text" id="winText"></div>
+    <div class="win-seats" id="winSeats"></div>
+    <button class="btn primary" id="btnNext" style="width:100%">继续推理 · 下一案</button>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<footer>
+  罗生门推理台 · 其三 —— <b>圆桌证词</b>。真话与局部视角的合成题：你解的从来不是谎言，是每个人看不见的那半边圆桌。
+</footer>
+
+<script>
+'use strict';
+/* =====================================================================
+   圆桌证词 Roundtable Testimony
+   机制：六人圆桌座位排列约束题。
+   - 六份供述全部为真（无人撒谎），但每条只涉及部分座位关系；
+   - 生成器保证约束集存在唯一解（穷举 6! = 720 验证）；
+   - 玩家亲手安放席位，证词实时变灯；提示 = 把所有未被玩家否决的
+     证词代入穷举，算出某位客人的"可能座位"集合（可能性收缩）。
+   纯函数段（本注释以下至 init 之前）不含 DOM 引用，可被 node 提取测试。
+   ===================================================================== */
+
+var N = 6;
+var GUESTS = [
+  { name: '沈昭',   color: '#e5484d' },
+  { name: '林砚',   color: '#3b82f6' },
+  { name: '苏挽',   color: '#22a06b' },
+  { name: '程一舟', color: '#e8a13a' },
+  { name: '白鹭',   color: '#cfd4de' },
+  { name: '韩烛',   color: '#a855f7' }
+];
+/* 座位叙事名（顺时针 0..5），固定用于文案；窗边 = 0 号位，叙事锚点 */
+var SEAT_NAMES = ['窗边', '壁炉', '门侧', '廊柱', '画下', '书柜'];
+var SEAT_CN = ['壹', '贰', '叁', '肆', '伍', '陆'];
+var KILLER_SEAT = 0;
+
+/* ---------- 工具 ---------- */
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (ch) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+  });
+}
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function ringDist(sa, sb) {
+  var d = Math.abs(sa - sb);
+  return Math.min(d, N - d);
+}
+
+/* ---------- 约束 ----------
+   约束 {kind, a, b}：a、b 为客人索引（有序 where 语义需要）。
+   seats[座位号] = 客人号；null/缺省 = 未安置。 */
+function evalConstraint(c, seats) {
+  var sa = -1, sb = -1, i;
+  for (i = 0; i < N; i++) { if (seats[i] === c.a) sa = i; if (seats[i] === c.b) sb = i; }
+  if (sa < 0 || sb < 0) return null; /* 待定 */
+  switch (c.kind) {
+    case 'adj':     return ringDist(sa, sb) === 1;
+    case 'gap':     return ringDist(sa, sb) === 2;
+    case 'opp':     return ringDist(sa, sb) === 3;
+    case 'left':    return sa === (sb + 1) % N; /* 顺时针 = 左手边 */
+    case 'right':   return sa === (sb - 1 + N) % N;
+    case 'notAdj':  return ringDist(sa, sb) !== 1;
+    case 'atSeat':  return sa === c.seat;       /* 绝对锚点：坐在命名席位 */
+  }
+  return null;
+}
+function constraintText(c) {
+  var A = GUESTS[c.a].name, B = GUESTS[c.b].name;
+  switch (c.kind) {
+    case 'adj':    return A + ' 与 ' + B + ' 相邻而坐';
+    case 'gap':    return A + ' 与 ' + B + ' 之间恰好隔着一位客人';
+    case 'opp':    return A + ' 坐在 ' + B + ' 的正对面';
+    case 'left':   return A + ' 坐在 ' + B + ' 的左手边';
+    case 'right':  return A + ' 坐在 ' + B + ' 的右手边';
+    case 'notAdj': return A + ' 与 ' + B + ' 并不相邻';
+    case 'atSeat': return A + ' 坐在「' + SEAT_NAMES[c.seat] + '」的席位';
+  }
+  return '';
+}
+
+/* ---------- 求解器：穷举 720 排列 ---------- */
+function allSolutions(clues) {
+  var out = [];
+  var used = new Array(N).fill(false);
+  var seats = new Array(N).fill(-1);
+  (function rec(pos) {
+    if (pos === N) {
+      for (var k = 0; k < clues.length; k++) {
+        if (evalConstraint(clues[k], seats) !== true) return;
+      }
+      out.push(seats.slice());
+      return;
+    }
+    for (var r = 0; r < N; r++) {
+      if (used[r]) continue;
+      used[r] = true; seats[pos] = r;
+      rec(pos + 1);
+      used[r] = false; seats[pos] = -1;
+    }
+  })(0);
+  return out;
+}
+function countSolutions(clues) { return allSolutions(clues).length; }
+
+/* ---------- 生成器：保证唯一解 ----------
+   流程：随机一个"真相排列" → 收集该排列下为真的约束池 →
+   逐条加入能收紧解空间的约束，达成唯一解后再补入冗余真供述，
+   使证词数量随关卡上升（读来更耐猜，解不变）。 */
+function genPuzzle(nClues) {
+  var minClues = Math.min(nClues, 3);
+  var FULL = 720;
+  for (var attempt = 0; attempt < 60; attempt++) {
+    var answer = shuffle([0, 1, 2, 3, 4, 5]);
+    var pool = [];
+    var a, b, kinds;
+    for (a = 0; a < N; a++) for (b = 0; b < N; b++) {
+      if (a === b) continue;
+      pool.push({ kind: 'left',  a: a, b: b });
+      pool.push({ kind: 'right', a: a, b: b });
+      if (a < b) {
+        kinds = ['adj', 'gap', 'opp', 'notAdj'];
+        for (var t = 0; t < kinds.length; t++) pool.push({ kind: kinds[t], a: a, b: b });
+      }
+    }
+    /* 绝对锚点：命名席位（除窗边——窗边留给真相揭晓时的叙事锚点，不入题面） */
+    for (a = 0; a < N; a++) {
+      for (var s = 1; s < N; s++) pool.push({ kind: 'atSeat', a: a, b: a, seat: s });
+    }
+    var truePool = shuffle(pool.filter(function (c) { return evalConstraint(c, answer) === true; }));
+    /* 第一阶段：贪心加入能收紧解空间的供述 */
+    var chosen = [];
+    var prevCount = FULL;
+    var unique = false;
+    for (var i = 0; i < truePool.length; i++) {
+      var cnt = countSolutions(chosen.concat([truePool[i]]));
+      if (cnt > 0 && cnt < prevCount) {
+        chosen.push(truePool[i]);
+        prevCount = cnt;
+        if (cnt === 1) { unique = true; break; }
+      }
+    }
+    /* 救援：贪心停滞（剩余解构成对称族，单条供述无法区分）时，
+       任取一个非答案解，找一条"对答案成立、对它不成立"的真供述，
+       必然砍掉该解——解数严格下降，迭代直至唯一 */
+    var guard = 0;
+    while (!unique && guard++ < 40) {
+      var sols = allSolutions(chosen);
+      if (sols.length <= 1) { unique = sols.length === 1; break; }
+      var other = null;
+      for (var s = 0; s < sols.length; s++) {
+        if (sols[s].join(',') !== answer.join(',')) { other = sols[s]; break; }
+      }
+      if (!other) { unique = true; break; }
+      var sep = null;
+      for (var k = 0; k < truePool.length; k++) {
+        if (chosen.indexOf(truePool[k]) !== -1) continue;
+        if (evalConstraint(truePool[k], answer) === true && evalConstraint(truePool[k], other) === false) {
+          sep = truePool[k]; break;
+        }
+      }
+      if (!sep) break;
+      chosen.push(sep);
+      prevCount = countSolutions(chosen);
+      if (prevCount === 1) unique = true;
+    }
+    if (!unique) continue;
+    /* 第二阶段：补白——解集已锁定为唯一答案，任何真供述都不会改变它 */
+    for (var j = 0; j < truePool.length && chosen.length < nClues; j++) {
+      if (chosen.indexOf(truePool[j]) === -1) chosen.push(truePool[j]);
+    }
+    if (chosen.length >= minClues) {
+      return { answer: answer, clues: shuffle(chosen) };
+    }
+  }
+  return null;
+}
+
+/* 某位客人在"所有未被否决的证词"下可能坐的座位集合 */
+function possibleSeats(clues, roleIdx) {
+  var sols = allSolutions(clues);
+  var set = {};
+  for (var i = 0; i < sols.length; i++) set[sols[i].indexOf(roleIdx)] = true;
+  return Object.keys(set).map(Number).sort(function (x, y) { return x - y; });
+}
+
+/* ===================== 以下为 DOM / 游戏状态 ===================== */
+
+var state = {
+  level: 1,
+  seats: new Array(N).fill(null),  /* seats[座位号] = 客人号 | null */
+  clues: [],
+  answer: null,
+  selected: null,                  /* 角色池中选中的客人号 */
+  moves: 0,
+  solved: false
+};
+
+function $(id) { return document.getElementById(id); }
+
+/* ---------- 渲染：圆桌 ---------- */
+function renderTable() {
+  var svg = $('table');
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  var cx = 170, cy = 170, R = 116;
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  /* 桌面 */
+  var table = document.createElementNS(SVGNS, 'circle');
+  table.setAttribute('cx', cx); table.setAttribute('cy', cy);
+  table.setAttribute('r', 74);
+  table.setAttribute('fill', '#1a1e29');
+  table.setAttribute('stroke', '#2a3142');
+  svg.appendChild(table);
+
+  var cName = document.createElementNS(SVGNS, 'text');
+  cName.setAttribute('x', cx); cName.setAttribute('y', cy - 2);
+  cName.setAttribute('class', 'table-center-name');
+  cName.textContent = '墨园晚宴';
+  svg.appendChild(cName);
+  var cSub = document.createElementNS(SVGNS, 'text');
+  cSub.setAttribute('x', cx); cSub.setAttribute('y', cy + 16);
+  cSub.setAttribute('class', 'table-center-sub');
+  cSub.textContent = '六客 · 一案';
+  svg.appendChild(cSub);
+
+  for (var i = 0; i < N; i++) {
+    var ang = (-90 + i * 60) * Math.PI / 180;
+    var x = cx + R * Math.cos(ang);
+    var y = cy + R * Math.sin(ang);
+    var g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('class', 'seat' + (state.seats[i] !== null ? ' has-guest' : ''));
+    g.setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')');
+    g.setAttribute('data-seat', String(i));
+    g.setAttribute('tabindex', '0');
+    g.setAttribute('role', 'button');
+
+    var glow = document.createElementNS(SVGNS, 'circle');
+    glow.setAttribute('class', 'hint-glow-ring');
+    glow.setAttribute('r', 38);
+    g.appendChild(glow);
+
+    var ring = document.createElementNS(SVGNS, 'circle');
+    ring.setAttribute('class', 'seat-ring');
+    ring.setAttribute('r', 32);
+    g.appendChild(ring);
+
+    var role = state.seats[i];
+    if (role === null) {
+      var empty = document.createElementNS(SVGNS, 'text');
+      empty.setAttribute('class', 'seat-empty-name');
+      empty.setAttribute('y', 4);
+      empty.textContent = SEAT_NAMES[i];
+      g.appendChild(empty);
+    } else {
+      var name = document.createElementNS(SVGNS, 'text');
+      name.setAttribute('class', 'seat-name');
+      name.setAttribute('y', 2);
+      name.textContent = GUESTS[role].name;
+      g.appendChild(name);
+      var dot = document.createElementNS(SVGNS, 'circle');
+      dot.setAttribute('class', 'seat-dot');
+      dot.setAttribute('cy', 15);
+      dot.setAttribute('r', 5.5);
+      dot.setAttribute('fill', GUESTS[role].color);
+      g.appendChild(dot);
+    }
+    var label = document.createElementNS(SVGNS, 'text');
+    label.setAttribute('class', 'seat-label');
+    label.setAttribute('y', -36);
+    label.textContent = SEAT_CN[i] + ' · ' + SEAT_NAMES[i];
+    g.appendChild(label);
+
+    g.addEventListener('click', function () { onSeatClick(+this.getAttribute('data-seat')); });
+    g.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSeatClick(+this.getAttribute('data-seat')); }
+    });
+    g.addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('drag-over'); });
+    g.addEventListener('dragleave', function () { this.classList.remove('drag-over'); });
+    g.addEventListener('drop', function (e) {
+      e.preventDefault();
+      this.classList.remove('drag-over');
+      var r = e.dataTransfer.getData('text/plain');
+      if (r !== '') placeGuest(+r, +this.getAttribute('data-seat'));
+    });
+
+    svg.appendChild(g);
+  }
+}
+
+/* ---------- 渲染：角色池 ---------- */
+function renderPool() {
+  var pool = $('pool');
+  pool.innerHTML = '';
+  for (var r = 0; r < N; r++) {
+    var card = document.createElement('div');
+    card.className = 'guest'
+      + (state.selected === r ? ' selected' : '')
+      + (state.seats.indexOf(r) >= 0 ? ' placed' : '');
+    card.setAttribute('draggable', 'true');
+    card.setAttribute('data-role', String(r));
+    card.innerHTML =
+      '<div class="g-dot" style="background:' + esc(GUESTS[r].color) + ';color:' + esc(GUESTS[r].color) + '"></div>' +
+      '<div class="g-name">' + esc(GUESTS[r].name) + '</div>' +
+      '<div class="g-state">' + (state.seats.indexOf(r) >= 0 ? '已入座' : '待传讯') + '</div>';
+    card.addEventListener('click', function () {
+      var r = +this.getAttribute('data-role');
+      state.selected = (state.selected === r) ? null : r;
+      render();
+    });
+    card.addEventListener('dragstart', function (e) {
+      e.dataTransfer.setData('text/plain', this.getAttribute('data-role'));
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    pool.appendChild(card);
+  }
+}
+
+/* ---------- 渲染：证词 ---------- */
+function clueStates() {
+  return state.clues.map(function (c) { return evalConstraint(c, state.seats); });
+}
+function renderClues() {
+  var list = $('clueList');
+  list.innerHTML = '';
+  var states = clueStates();
+  var okc = 0, badc = 0, pendc = 0;
+  for (var i = 0; i < state.clues.length; i++) {
+    var c = state.clues[i];
+    var st = states[i];
+    var cls = st === true ? 'ok' : (st === false ? 'bad' : '');
+    if (st === true) okc++; else if (st === false) badc++; else pendc++;
+    var by = c.by ? '—— ' + esc(c.by) + ' 的供述' : '—— 笔录残页';
+    var mark = st === true ? '✓' : (st === false ? '✗' : '?');
+    var card = document.createElement('article');
+    card.className = 'clue ' + cls;
+    card.innerHTML =
+      '<div class="clue-idx">' + SEAT_CN[i] + '</div>' +
+      '<div class="clue-body">' +
+        '<p class="clue-text">' + esc(constraintText(c)) + '</p>' +
+        '<p class="clue-by">' + by + '</p>' +
+      '</div>' +
+      '<div class="clue-state">' + mark + '</div>';
+    list.appendChild(card);
+  }
+  $('clueStat').innerHTML =
+    '<span style="color:var(--ok)">' + okc + ' 吻合</span> · ' +
+    '<span style="color:var(--bad)">' + badc + ' 矛盾</span> · ' +
+    pendc + ' 待定';
+  $('movesBadge').textContent = String(state.moves);
+  $('levelBadge').textContent = String(state.level);
+  var placed = state.seats.filter(function (s) { return s !== null; }).length;
+  $('tableNote').innerHTML = '已入座 <b>' + placed + '</b> / ' + N + ' 位。' +
+    (placed < N ? '点击下方客人，再点圆桌空位入座；点已入座者可请其离席。' : '六位俱已入席——灯全绿即呈堂。');
+  return { okc: okc, badc: badc, pendc: pendc, placed: placed };
+}
+
+function render() {
+  renderTable();
+  renderPool();
+  renderClues();
+}
+
+/* ---------- 交互 ---------- */
+function placeGuest(role, seat) {
+  if (state.solved) return;
+  var oldSeat = state.seats.indexOf(role);
+  if (oldSeat >= 0) state.seats[oldSeat] = null;
+  var occupant = state.seats[seat];
+  if (occupant !== null && occupant !== role) {
+    if (oldSeat >= 0) {
+      state.seats[oldSeat] = occupant;   /* 交换：原客人挪到 dragged 客人的旧位 */
+      state.seats[seat] = role;
+    } else {
+      toast('「' + SEAT_NAMES[seat] + '」已有人——先把原客人请离再入席');
+      state.selected = role;
+      render();
+      return;
+    }
+  } else {
+    state.seats[seat] = role;
+  }
+  state.moves++;
+  state.selected = null;
+  clearHints();
+  render();
+  afterMove();
+}
+function onSeatClick(seat) {
+  if (state.solved) return;
+  var role = state.seats[seat];
+  if (state.selected !== null) {
+    placeGuest(state.selected, seat);
+  } else if (role !== null) {
+    state.seats[seat] = null;      /* 请其离席 */
+    state.moves++;
+    clearHints();
+    render();
+    afterMove();
+  }
+}
+function afterMove() {
+  var s = clueStates();
+  var allTrue = s.every(function (x) { return x === true; });
+  if (allTrue && !state.solved) {
+    state.solved = true;
+    setTimeout(winGame, 350);
+  }
+}
+
+/* ---------- 提示：可能性收缩 ---------- */
+function clearHints() {
+  var seats = document.querySelectorAll('.seat.hint-glow');
+  for (var i = 0; i < seats.length; i++) seats[i].classList.remove('hint-glow');
+}
+function showHint() {
+  if (state.solved) return;
+  var states = clueStates();
+  var pendIdx = [];
+  for (var i = 0; i < states.length; i++) if (states[i] !== true) pendIdx.push(i);
+  if (pendIdx.length === 0) { toast('六份供述俱已吻合——直接呈堂吧'); return; }
+  var ci = pendIdx[Math.floor(Math.random() * pendIdx.length)];
+  var c = state.clues[ci];
+  /* 玩家已认可（未亮红灯）的证词 */
+  var accepted = state.clues.filter(function (cc, j) { return states[j] !== false; });
+  var sols = allSolutions(accepted);
+  if (sols.length === 0) {
+    toast('当前认可的供述互相矛盾——先撤掉一条红灯证词再推');
+    return;
+  }
+  var poss = possibleSeats(accepted, c.a);
+  clearHints();
+  var seatEls = document.querySelectorAll('.seat');
+  poss.forEach(function (si) {
+    if (seatEls[si]) seatEls[si].classList.add('hint-glow');
+  });
+  var names = poss.map(function (si) { return SEAT_NAMES[si]; }).join('、');
+  toast('按当前认可的供述，' + GUESTS[c.a].name + ' 只可能坐在：' + names);
+}
+
+/* ---------- 通关 ---------- */
+function winGame() {
+  var killer = state.answer[KILLER_SEAT];
+  var seatEls = document.querySelectorAll('.seat');
+  if (seatEls[KILLER_SEAT]) seatEls[KILLER_SEAT].classList.add('killer', 'pop');
+  $('winText').textContent =
+    '窗边的那把椅子——' + GUESTS[killer].name + '。\n' +
+    '壁炉余烬熄灭之前，最后离开书房的只有她。那杯没动过的酒，杯沿的唇印与残液里的指纹，全对得上号；' +
+    '而其余五人，谁也说不全自己看见的那半边圆桌。';
+  var ws = $('winSeats');
+  ws.innerHTML = '';
+  for (var i = 0; i < N; i++) {
+    var r = state.answer[i];
+    var d = document.createElement('div');
+    d.className = 'win-seat' + (i === KILLER_SEAT ? ' killer' : '');
+    d.innerHTML =
+      '<span class="ws-dot" style="background:' + esc(GUESTS[r].color) + ';color:' + esc(GUESTS[r].color) + '"></span>' +
+      '<span>' + esc(GUESTS[r].name) + '</span>' +
+      '<span class="ws-seat">' + SEAT_NAMES[i] + '</span>';
+    ws.appendChild(d);
+  }
+  $('winOverlay').classList.remove('hidden');
+  saveProgress();
+}
+
+/* ---------- 关卡 ---------- */
+function newPuzzle(level) {
+  var nClues = Math.min(6, 3 + Math.ceil(level / 2));
+  var p = genPuzzle(nClues);
+  if (!p) { toast('生成失败，请重试'); return; }
+  p.clues.forEach(function (c) {
+    /* 随机指定供述者（可以是当事人自己——罗生门的趣味所在） */
+    c.by = Math.random() < 0.6 ? GUESTS[Math.floor(Math.random() * N)].name : null;
+  });
+  state.level = level;
+  state.seats = new Array(N).fill(null);
+  state.clues = p.clues;
+  state.answer = p.answer;
+  state.selected = null;
+  state.moves = 0;
+  state.solved = false;
+  clearHints();
+  render();
+}
+function nextLevel() {
+  $('winOverlay').classList.add('hidden');
+  newPuzzle(state.level + 1);
+}
+
+/* ---------- 存档 ---------- */
+function saveProgress() {
+  try { localStorage.setItem('roundtable-testimony-level', String(state.level)); } catch (e) { /* file:// 下忽略 */ }
+}
+function loadProgress() {
+  try {
+    var v = parseInt(localStorage.getItem('roundtable-testimony-level') || '1', 10);
+    return (isFinite(v) && v >= 1) ? v : 1;
+  } catch (e) { return 1; }
+}
+
+/* ---------- toast ---------- */
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function () { t.classList.remove('show'); }, 2800);
+}
+
+/* ---------- 初始化 ---------- */
+function init() {
+  newPuzzle(loadProgress());
+
+  $('btnCheck').addEventListener('click', function () {
+    if (state.solved) { toast('本案已破'); return; }
+    var s = clueStates();
+    var badc = s.filter(function (x) { return x === false; }).length;
+    var pendc = s.filter(function (x) { return x === null; }).length;
+    if (badc > 0) {
+      toast('有 ' + badc + ' 条供述与当前席位矛盾——供述不会错，错的是座位');
+    } else if (pendc > 0) {
+      toast('还有 ' + pendc + ' 条供述待定，先把六位客人都请入席');
+    } else {
+      state.solved = true;
+      winGame();
+    }
+  });
+  $('btnHint').addEventListener('click', showHint);
+  $('btnReset').addEventListener('click', function () {
+    if (state.solved) return;
+    state.seats = new Array(N).fill(null);
+    state.selected = null;
+    state.moves = 0;
+    clearHints();
+    render();
+  });
+  $('btnNext').addEventListener('click', nextLevel);
+  $('winOverlay').addEventListener('click', function (e) {
+    if (e.target === this) { this.classList.add('hidden'); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { state.selected = null; render(); }
+  });
+}
+
+if (typeof document !== 'undefined' && document.getElementById) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}
+</script>
+</body>
+</html>

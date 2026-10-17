@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>像素地图生成器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --surface2: #16213e;
+    --border: #2a2a4a;
+    --text: #e0e0f0;
+    --text-dim: #8888aa;
+    --accent: #4fc3f7;
+    --accent2: #7c4dff;
+    --success: #66bb6a;
+    --danger: #ef5350;
+  }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow-x: hidden;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  h1 span { color: var(--accent); font-weight: 600; }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 24px;
+  }
+  .main {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    max-width: 960px;
+    align-items: flex-start;
+  }
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    width: 280px;
+    flex-shrink: 0;
+  }
+  .controls h2 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .field input[type="text"],
+  .field input[type="number"],
+  .field select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  .range-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  button:hover {
+    background: var(--border);
+    border-color: var(--accent);
+  }
+  button.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  button.primary:hover { opacity: 0.85; }
+  button.accent2 {
+    background: var(--accent2);
+    color: #fff;
+    border-color: var(--accent2);
+  }
+  .canvas-area {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 400px;
+  }
+  .canvas-area h2 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  #mapCanvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    border-radius: 4px;
+    max-width: 100%;
+    background: #000;
+  }
+  .info-bar {
+    margin-top: 12px;
+    display: flex;
+    gap: 16px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .info-bar span b { color: var(--accent); font-weight: 600; }
+  .palette-legend {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  @media (max-width: 700px) {
+    .main { flex-direction: column; }
+    .controls { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<h1>像素<span>地图</span>生成器</h1>
+<p class="subtitle">种子确定性 · 三种地形模式 · 导出 PNG / JSON</p>
+
+<div class="main">
+  <div class="controls">
+    <h2>参数控制</h2>
+
+    <div class="field">
+      <label>种子（任意字符，同种子同地图）</label>
+      <input type="text" id="seedInput" value="hello-world" maxlength="32">
+    </div>
+
+    <div class="field">
+      <label>地形模式</label>
+      <select id="modeSelect">
+        <option value="cave">洞穴（元胞自动机）</option>
+        <option value="island">岛屿（距离场 + 噪声）</option>
+        <option value="maze">迷宫（递归回溯）</option>
+      </select>
+    </div>
+
+    <div class="field" id="densityField">
+      <label>密度</label>
+      <input type="range" id="densityRange" min="20" max="80" value="45">
+      <div class="range-row"><span>20%</span><span id="densityVal">45%</span><span>80%</span></div>
+    </div>
+
+    <div class="field" id="smoothField">
+      <label>平滑迭代（仅洞穴）</label>
+      <input type="range" id="smoothRange" min="1" max="8" value="5">
+      <div class="range-row"><span>1</span><span id="smoothVal">5</span><span>8</span></div>
+    </div>
+
+    <div class="field">
+      <label>地图尺寸</label>
+      <select id="sizeSelect">
+        <option value="32">32 × 32</option>
+        <option value="48" selected>48 × 48</option>
+        <option value="64">64 × 64</option>
+        <option value="96">96 × 96</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>显示选项</label>
+      <select id="viewSelect">
+        <option value="clean">干净地图</option>
+        <option value="grid">网格叠加</option>
+        <option value="biome">生态着色</option>
+      </select>
+    </div>
+
+    <div class="btn-row">
+      <button class="primary" id="btnGenerate">生成地图</button>
+      <button id="btnRandom">随机种子</button>
+      <button class="accent2" id="btnExportPng">导出 PNG</button>
+      <button id="btnExportJson">导出 JSON</button>
+    </div>
+  </div>
+
+  <div class="canvas-area">
+    <h2>预览</h2>
+    <canvas id="mapCanvas"></canvas>
+    <div class="info-bar">
+      <span>空地率 <b id="statOpen">0%</b></span>
+      <span>连通区域 <b id="statRegions">0</b></span>
+      <span>种子 <b id="statSeed">-</b></span>
+    </div>
+    <div class="palette-legend" id="legendArea"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===== 种子随机数 =====
+  function hashSeed(str) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    var a = seed >>> 0;
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  // ===== 元胞自动机洞穴 =====
+  function generateCave(size, density, smoothIter, rng) {
+    var map = new Uint8Array(size * size);
+    var threshold = density / 100;
+
+    // 随机填充
+    for (var i = 0; i < map.length; i++) {
+      map[i] = rng() < threshold ? 1 : 0;
+    }
+
+    // 平滑迭代
+    for (var s = 0; s < smoothIter; s++) {
+      var next = new Uint8Array(map);
+      for (var y = 0; y < size; y++) {
+        for (var x = 0; x < size; x++) {
+          var walls = 0;
+          for (var dy = -1; dy <= 1; dy++) {
+            for (var dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              var nx = x + dx, ny = y + dy;
+              if (nx < 0 || nx >= size || ny < 0 || ny >= size) {
+                walls++;
+              } else if (map[ny * size + nx] === 1) {
+                walls++;
+              }
+            }
+          }
+          var idx = y * size + x;
+          if (map[idx] === 1) {
+            next[idx] = walls >= 5 ? 1 : 0;
+          } else {
+            next[idx] = walls >= 5 ? 1 : 0;
+          }
+        }
+      }
+      map = next;
+    }
+
+    return map;
+  }
+
+  // ===== 岛屿（距离场 + 噪声）=====
+  function generateIsland(size, density, rng) {
+    var map = new Uint8Array(size * size);
+    var cx = size / 2, cy = size / 2;
+    var maxDist = Math.sqrt(cx * cx + cy * cy);
+    var threshold = 1 - (density / 100);
+
+    // 简单噪声：多 octave 正弦叠加
+    function noise(x, y, seedOffset) {
+      var v = 0;
+      v += Math.sin(x * 0.15 + seedOffset) * 0.5;
+      v += Math.sin(y * 0.18 + seedOffset * 2.1) * 0.3;
+      v += Math.sin((x + y) * 0.1 + seedOffset * 3.7) * 0.2;
+      return v;
+    }
+
+    var seedOff = rng() * 100;
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        var dx = x - cx, dy = y - cy;
+        var dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
+        var n = noise(x, y, seedOff) * 0.15;
+        var val = 1 - dist + n;
+        map[y * size + x] = val > threshold ? 1 : 0;
+      }
+    }
+
+    return map;
+  }
+
+  // ===== 迷宫（递归回溯）=====
+  function generateMaze(size, rng) {
+    // 迷宫用 (2*size+1) 的网格，奇数格为通路
+    var fullSize = size * 2 + 1;
+    var map = new Uint8Array(fullSize * fullSize);
+    // 全墙
+    for (var i = 0; i < map.length; i++) map[i] = 1;
+
+    var visited = new Uint8Array(size * size);
+    var stack = [];
+    var startX = 0, startY = 0;
+
+    function shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(rng() * (i + 1));
+        var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      }
+      return arr;
+    }
+
+    stack.push([startX, startY]);
+    visited[0] = 1;
+    map[1 * fullSize + 1] = 0;
+
+    while (stack.length > 0) {
+      var top = stack[stack.length - 1];
+      var cx = top[0], cy = top[1];
+      var neighbors = shuffle([
+        [cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]
+      ]);
+      var moved = false;
+      for (var n = 0; n < neighbors.length; n++) {
+        var nx = neighbors[n][0], ny = neighbors[n][1];
+        if (nx >= 0 && nx < size && ny >= 0 && ny < size && !visited[ny * size + nx]) {
+          visited[ny * size + nx] = 1;
+          // 打通当前与下一个之间的墙
+          var wallX = cx + nx + 1;
+          var wallY = cy + ny + 1;
+          map[wallY * fullSize + wallX] = 0;
+          map[(ny * 2 + 1) * fullSize + (nx * 2 + 1)] = 0;
+          stack.push([nx, ny]);
+          moved = true;
+          break;
+        }
+      }
+      if (!moved) stack.pop();
+    }
+
+    return { map: map, fullSize: fullSize };
+  }
+
+  // ===== 连通区域计数 =====
+  function countRegions(map, size) {
+    var visited = new Uint8Array(map.length);
+    var regions = 0;
+    for (var i = 0; i < map.length; i++) {
+      if (map[i] === 0 && !visited[i]) {
+        regions++;
+        var queue = [i];
+        visited[i] = 1;
+        while (queue.length > 0) {
+          var cur = queue.pop();
+          var cx = cur % size, cy = Math.floor(cur / size);
+          var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+          for (var d = 0; d < 4; d++) {
+            var nx = cx + dirs[d][0], ny = cy + dirs[d][1];
+            if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+              var ni = ny * size + nx;
+              if (map[ni] === 0 && !visited[ni]) {
+                visited[ni] = 1;
+                queue.push(ni);
+              }
+            }
+          }
+        }
+      }
+    }
+    return regions;
+  }
+
+  // ===== 渲染 =====
+  var canvas = document.getElementById('mapCanvas');
+  var ctx = canvas.getContext('2d');
+
+  function renderMap(map, size, viewMode, mode) {
+    canvas.width = size;
+    canvas.height = size;
+    var img = ctx.createImageData(size, size);
+
+    var wallColor, floorColor, waterColor;
+    if (viewMode === 'biome') {
+      if (mode === 'cave') {
+        wallColor = [64, 50, 40, 255];      // 岩石
+        floorColor = [30, 60, 90, 255];     // 水蓝
+      } else if (mode === 'island') {
+        wallColor = [200, 180, 120, 255];   // 沙地
+        floorColor = [30, 100, 60, 255];    // 绿地
+      } else {
+        wallColor = [80, 60, 100, 255];     // 紫墙
+        floorColor = [200, 200, 220, 255];  // 通路
+      }
+    } else {
+      wallColor = [200, 200, 220, 255];
+      floorColor = [30, 30, 50, 255];
+    }
+
+    for (var i = 0; i < map.length; i++) {
+      var color = map[i] === 1 ? wallColor : floorColor;
+      img.data[i * 4] = color[0];
+      img.data[i * 4 + 1] = color[1];
+      img.data[i * 4 + 2] = color[2];
+      img.data[i * 4 + 3] = color[3];
+    }
+
+    ctx.putImageData(img, 0, 0);
+
+    // 网格叠加
+    if (viewMode === 'grid') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      for (var g = 0; g <= size; g += 4) {
+        ctx.beginPath();
+        ctx.moveTo(g + 0.5, 0);
+        ctx.lineTo(g + 0.5, size);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, g + 0.5);
+        ctx.lineTo(size, g + 0.5);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // ===== 统计信息 =====
+  function updateStats(map, size, seed) {
+    var open = 0;
+    for (var i = 0; i < map.length; i++) {
+      if (map[i] === 0) open++;
+    }
+    var pct = Math.round((open / map.length) * 100);
+    document.getElementById('statOpen').textContent = pct + '%';
+    document.getElementById('statRegions').textContent = countRegions(map, size);
+    document.getElementById('statSeed').textContent = seed;
+  }
+
+  // ===== 图例 =====
+  function updateLegend(viewMode, mode) {
+    var area = document.getElementById('legendArea');
+    var items = [];
+    if (viewMode === 'biome') {
+      if (mode === 'cave') {
+        items = [
+          { color: '#643228', label: '岩壁' },
+          { color: '#1e3c5a', label: '通道' }
+        ];
+      } else if (mode === 'island') {
+        items = [
+          { color: '#c8b478', label: '陆地' },
+          { color: '#1e643c', label: '海洋' }
+        ];
+      } else {
+        items = [
+          { color: '#503c64', label: '墙壁' },
+          { color: '#c8c8dc', label: '通路' }
+        ];
+      }
+    } else {
+      items = [
+        { color: '#c8c8dc', label: '墙/陆地' },
+        { color: '#1e1e32', label: '空地/水' }
+      ];
+    }
+    area.innerHTML = items.map(function(item) {
+      return '<div class="legend-item"><div class="legend-swatch" style="background:' + item.color + '"></div>' + item.label + '</div>';
+    }).join('');
+  }
+
+  // ===== 主生成流程 =====
+  var currentMap = null;
+  var currentSize = 48;
+
+  function generate() {
+    var seed = document.getElementById('seedInput').value || 'default';
+    var mode = document.getElementById('modeSelect').value;
+    var density = parseInt(document.getElementById('densityRange').value, 10);
+    var smoothIter = parseInt(document.getElementById('smoothRange').value, 10);
+    var size = parseInt(document.getElementById('sizeSelect').value, 10);
+    var viewMode = document.getElementById('viewSelect').value;
+
+    var seedHash = hashSeed(seed);
+    var rng = mulberry32(seedHash);
+
+    var map, actualSize;
+    if (mode === 'maze') {
+      var result = generateMaze(size, rng);
+      map = result.map;
+      actualSize = result.fullSize;
+      currentSize = actualSize;
+    } else if (mode === 'island') {
+      map = generateIsland(size, density, rng);
+      actualSize = size;
+      currentSize = size;
+    } else {
+      map = generateCave(size, density, smoothIter, rng);
+      actualSize = size;
+      currentSize = size;
+    }
+
+    currentMap = map;
+    renderMap(map, actualSize, viewMode, mode);
+    updateStats(map, actualSize, seed);
+    updateLegend(viewMode, mode);
+  }
+
+  // ===== 事件绑定 =====
+  document.getElementById('btnGenerate').addEventListener('click', generate);
+
+  document.getElementById('btnRandom').addEventListener('click', function() {
+    var words = ['forest', 'cave', 'island', 'maze', 'river', 'mountain', 'desert', 'tundra'];
+    var w = words[Math.floor(Math.random() * words.length)];
+    var num = Math.floor(Math.random() * 99999);
+    document.getElementById('seedInput').value = w + '-' + num;
+    generate();
+  });
+
+  document.getElementById('densityRange').addEventListener('input', function() {
+    document.getElementById('densityVal').textContent = this.value + '%';
+  });
+
+  document.getElementById('smoothRange').addEventListener('input', function() {
+    document.getElementById('smoothVal').textContent = this.value;
+  });
+
+  document.getElementById('modeSelect').addEventListener('change', function() {
+    var isMaze = this.value === 'maze';
+    document.getElementById('densityField').style.display = isMaze ? 'none' : '';
+    document.getElementById('smoothField').style.display = (isMaze || this.value === 'island') ? 'none' : '';
+  });
+
+  document.getElementById('btnExportPng').addEventListener('click', function() {
+    if (!currentMap) return;
+    var link = document.createElement('a');
+    link.download = 'map_' + document.getElementById('seedInput').value + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  document.getElementById('btnExportJson').addEventListener('click', function() {
+    if (!currentMap) return;
+    var seed = document.getElementById('seedInput').value;
+    var mode = document.getElementById('modeSelect').value;
+    var data = {
+      seed: seed,
+      mode: mode,
+      size: currentSize,
+      map: Array.from(currentMap)
+    };
+    var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    var link = document.createElement('a');
+    link.download = 'map_' + seed + '.json';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  // 初始生成
+  generate();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>共振沙盘 · 双板模态叠加器</title>
+<style>
+:root{
+  --bg:#0a0c10; --panel:#11151d; --panel2:#161b26;
+  --line:#232a38; --line2:#2e3749;
+  --txt:#e6ebf4; --muted:#8b95a8; --dim:#5c6679;
+  --acc:#5ec8ff; --hot:#ffb454; --ok:#6fdc9c; --bad:#ff6f61;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--txt); min-height:100vh;
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0c0f15,#0a0c10);padding:18px 22px 16px}
+header .kicker{font-size:11px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;margin-bottom:5px}
+header h1{margin:0;font-size:19px;font-weight:600;letter-spacing:.01em}
+header h1 em{font-style:normal;color:var(--acc)}
+header p{margin:7px 0 0;color:var(--muted);font-size:12.5px;max-width:900px}
+.wrap{display:grid;grid-template-columns:300px minmax(0,1fr) 292px;gap:0;align-items:start;min-height:calc(100vh - 92px)}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:16px 16px 30px}
+aside.r{border-right:none;border-left:1px solid var(--line)}
+aside h2{font-size:11px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin:20px 0 10px;font-weight:600}
+aside h2:first-child{margin-top:2px}
+.ctl{margin-bottom:13px}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+.ctl label b{color:var(--txt);font-family:var(--mono);font-weight:500;font-size:12px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:16px;background:transparent;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line2);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--acc);margin-top:-5px;border:none}
+input[type=range]::-moz-range-track{height:3px;background:var(--line2);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--acc);border:none}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.modes button{padding:8px 7px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;cursor:pointer;color:var(--txt);font-family:inherit;font-size:11.5px;text-align:left;transition:all .14s;line-height:1.35}
+.modes button:hover{border-color:var(--line2)}
+.modes button.on{background:#153248;border-color:#2b5f83}
+.modes button .mname{font-size:12px;font-weight:600;display:block;margin-bottom:2px}
+.modes button .mnote{font-size:10.5px;color:var(--muted);display:block;line-height:1.35}
+.check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer;margin-bottom:9px;user-select:none}
+.check input{width:15px;height:15px;accent-color:var(--acc);cursor:pointer;margin:0}
+button.act{width:100%;padding:9px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--txt);cursor:pointer;font-size:12.5px;font-family:inherit;transition:all .14s}
+button.act:hover{border-color:var(--line2);background:#1b2130}
+button.act.pri{background:#153248;border-color:#2b5f83;color:#bfe4ff}
+button.act.pri:hover{background:#1a4060}
+button.act + button.act{margin-top:7px}
+main{display:flex;flex-direction:column;align-items:center;padding:20px 18px 40px;min-width:0}
+.stage{position:relative;line-height:0;width:100%;max-width:620px}
+canvas#plate{width:100%;border-radius:12px;background:#06070b;display:block}
+#hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(8,10,14,.78);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;color:var(--muted);line-height:1.4;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap}
+#hint.show{opacity:1}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px;width:100%;max-width:620px}
+.stat{background:var(--panel);padding:10px 12px}
+.stat .k{font-size:10.5px;color:var(--dim);letter-spacing:.1em;margin-bottom:4px}
+.stat .v{font-family:var(--mono);font-size:14px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plain{width:100%;max-width:620px;margin-top:16px;display:flex;flex-direction:column;gap:13px}
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.pcard h3{margin:0 0 7px;font-size:11px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;font-weight:600}
+.pcard h3 b{color:var(--txt);letter-spacing:0;text-transform:none;font-size:12.5px}
+.pcard p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.7}
+.pcard .fig{font-family:var(--mono);font-size:11.5px;color:var(--acc);background:#0d1016;border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin-top:9px;overflow-x:auto;white-space:pre;line-height:1.6}
+.pcard.warn h3 b{color:var(--hot)}
+.pcard.warn .fig{color:var(--hot)}
+.ro{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:3px 0;border-bottom:1px dashed #1b2130}
+.ro:last-child{border-bottom:none}
+.ro b{font-family:var(--mono);color:var(--txt);font-weight:500}
+.led{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dim);margin-right:7px;vertical-align:1px}
+.led.g{background:var(--ok)}.led.r{background:var(--bad)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:100%;max-width:620px;margin-top:13px}
+summary{cursor:pointer;padding:11px 15px;font-size:12.5px;color:var(--muted);list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'+';color:var(--acc);font-family:var(--mono);margin-right:8px}
+details[open] summary::before{content:'-'}
+details .body{padding:0 15px 14px;font-size:12.5px;color:var(--muted);line-height:1.75}
+details .body code{font-family:var(--mono);font-size:11.5px;color:var(--acc);background:#0d1016;padding:1px 5px;border-radius:4px}
+details .body .fig{font-family:var(--mono);font-size:11.5px;color:var(--acc);background:#0d1016;border:1px solid var(--line);border-radius:7px;padding:9px 11px;margin-top:10px;overflow-x:auto;white-space:pre;line-height:1.6}
+footer{border-top:1px solid var(--line);padding:14px 22px;color:var(--dim);font-size:11.5px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media (max-width:1180px){
+  .wrap{grid-template-columns:1fr}
+  aside{border-right:none;border-bottom:1px solid var(--line)}
+  aside.r{border-left:none}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:560px){header{padding:15px 16px 13px}main{padding:14px 12px 30px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">Resonance Sandbox · 单文件离线</div>
+  <h1>共振沙盘 <em>·</em> 两块板叠加出的节点线</h1>
+  <p>两块方板各自按模态叠加体振动，叠加后互相抵消的地方，沙子就停在那里。画面不是贴图：每块板的每个模态都单独积分，节点线是干涉自己长出来的。</p>
+</header>
+
+<div class="wrap">
+
+<aside>
+  <h2>模态组合（点击或按 0–3）</h2>
+  <div class="modes" id="modes"></div>
+
+  <h2>驱动 / 激励</h2>
+  <div class="ctl">
+    <label>激振频率 <b id="v-freq">1.300</b></label>
+    <input type="range" id="s-freq" min="0" max="1" step="0.001" value="0.375">
+  </div>
+  <div class="ctl">
+    <label>持续激励 <b id="v-drive">0.60</b></label>
+    <input type="range" id="s-drive" min="0" max="1" step="0.01" value="0.6">
+  </div>
+  <div class="ctl">
+    <label>两板相位差 <b id="v-phase">0°</b></label>
+    <input type="range" id="s-phase" min="0" max="6.2832" step="0.01" value="0">
+  </div>
+
+  <h2>显示</h2>
+  <div class="ctl">
+    <label>节点线锐利度 <b id="v-sharp">3.0</b></label>
+    <input type="range" id="s-sharp" min="0.8" max="8" step="0.1" value="3">
+  </div>
+  <div class="ctl">
+    <label>色带 <b id="v-palette">琥珀</b></label>
+    <input type="range" id="s-palette" min="0" max="3" step="1" value="1">
+  </div>
+  <div class="check"><input type="checkbox" id="c-nodes"><span>描出节点线</span></div>
+  <div class="check"><input type="checkbox" id="c-vectors"><span>显示板 A 位移向量场</span></div>
+
+  <h2>沙粒</h2>
+  <div class="ctl">
+    <label>沙粒数量 <b id="v-grains">12,000</b></label>
+    <input type="range" id="s-grains" min="2000" max="40000" step="1000" value="12000">
+  </div>
+  <div class="ctl">
+    <label>热扰动 <b id="v-jitter">0.70</b></label>
+    <input type="range" id="s-jitter" min="0" max="2" step="0.02" value="0.7">
+  </div>
+  <div class="ctl">
+    <label>沙痕保留 <b id="v-fade">0.045</b></label>
+    <input type="range" id="s-fade" min="0" max="0.3" step="0.005" value="0.045">
+  </div>
+  <div class="check"><input type="checkbox" id="c-accum"><span>纯沉积（不可逆滑向节点线）</span></div>
+
+  <h2>操作</h2>
+  <button class="act pri" id="b-add">撒一把沙子（空格）</button>
+  <button class="act" id="b-clear">清空沙粒</button>
+  <button class="act" id="b-reset">重置全部参数</button>
+  <div style="font-size:11.5px;color:var(--dim);margin-top:11px;line-height:1.7">
+    在振膜上<b style="color:var(--muted)">按住拖动</b>＝按住该处（形成节点）。<br>
+    右键拖动＝把支点加到另一块板。<br>
+    数字键 <b style="color:var(--muted)">0–3</b> 切换模态组合。
+  </div>
+</aside>
+
+<main>
+  <div class="stage">
+    <canvas id="plate" width="620" height="620"></canvas>
+    <div id="hint"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="k">板 A / 板 B 主模态</div><div class="v" id="st-modes">—</div></div>
+    <div class="stat"><div class="k">频率贴合 A / B</div><div class="v" id="st-fit">—</div></div>
+    <div class="stat"><div class="k">沙粒</div><div class="v" id="st-grains">—</div></div>
+    <div class="stat"><div class="k">帧率</div><div class="v" id="st-fps">—</div></div>
+  </div>
+  <div class="plain" id="plain"></div>
+  <details>
+    <summary>界面里没有开关的那些旋钮：参数全表与克拉尼图说明</summary>
+    <div class="body">
+      激振频率 <code>f = 1.05 + 0.0075 × s</code>。每个模态的自然频率取
+      <code>f<sub>m,n</sub> = 1.0 + 0.15 × (m² + n²)</code>；「贴合度」= 该模态自然频率与激振频率的接近程度，
+      决定驱动注入能量的效率 —— 按下的模态若不在真实谱上，激励会被自己的阻尼吃掉。<br><br>
+      模态表（12 阶）。注意 <code>(2,1)</code> 与 <code>(1,2)</code> 同频，<code>(2,3)</code> 与 <code>(3,2)</code> 同频：
+      这几组简并在频率扫描时会互相争夺能量，是刻意保留的。
+      <div class="fig" id="table"></div>
+      关于绝对频率：真实方形板的模态频率 ∝ (m² + n²)。本作按视觉需要把基频压到 1.0、把高阶间距压到 0.15，
+      因此图样的<b>结构与解析模态族同构</b>，但绝对频率差若干倍 —— 这一点不假装精确。
+    </div>
+  </details>
+</main>
+
+<aside class="r">
+  <h2>能量收支</h2>
+  <div class="pcard" style="margin-top:2px">
+    <h3>每帧</h3>
+    <div class="ro"><span>驱动注入</span><b id="e-inj">—</b></div>
+    <div class="ro"><span>阻尼耗散</span><b id="e-damp">—</b></div>
+    <div class="ro"><span>沙粒摩擦</span><b id="e-fric">—</b></div>
+    <div class="ro"><span>沙粒动能</span><b id="e-kin">—</b></div>
+    <div class="ro"><span>净收支</span><b id="e-net">—</b></div>
+  </div>
+  <div class="pcard">
+    <h3>为什么盯这张表</h3>
+    <p>把两张图按振幅叠起来，可以把任何图样做得好看，但那样没有「阻尼 → 稳态」这回事。
+      这里是真积分：驱动注入与阻尼耗散互相平衡，振幅才停在一个有限的峰值上 ——
+      而这个峰值对应的频率，才是克拉尼频率。</p>
+  </div>
+
+  <h2>两种做法的分界</h2>
+  <div class="pcard">
+    <h3><span class="led r"></span>静态振幅叠加</h3>
+    <p>直接取 <code>|A·φ₁ + B·φ₂|</code> 上色。没有时间、没有能量、没有沙子能停住 ——
+      节点线位置对，但那里没有力，沙粒只能靠随机抖动碰运气落点。</p>
+    <div class="fig">· 无演化方程
+· 节点线是画出来的
+· 沙粒不受力</div>
+  </div>
+  <div class="pcard">
+    <h3><span class="led g"></span>时间演化（本作）</h3>
+    <p>两块板各自积分 <code>m·ü = −k∇²u − c·u̇ + F</code>，沙粒在合成场里被真实的力推着走。
+      节点线是<b>算出来的</b>：某点长期净位移为零，沙子自己就停在那儿。</p>
+    <div class="fig">· 有能量收支与稳态
+· 节点线由干涉自然形成
+· 沙粒受力迁移</div>
+  </div>
+
+  <h2>正确性自查</h2>
+  <div class="pcard">
+    <h3>守恒律，逐条看</h3>
+    <div class="ro"><span>沙粒数（质量）</span><b id="c-mass">—</b></div>
+    <div class="ro"><span>边界固定 |φ|</span><b id="c-bnd">—</b></div>
+    <div class="ro"><span>模态能量 ΣE</span><b id="c-ene">—</b></div>
+    <div class="ro"><span>沙粒净动量</span><b id="c-mom">—</b></div>
+  </div>
+</aside>
+
+</div>
+
+<footer>
+  <span>共振沙盘 · 单文件 HTML5 / Canvas2D · 零依赖、零网络请求、无构建</span>
+  <span id="foot-mode">—</span>
+</footer>
+
+<script>
+"use strict";
+
+/* ════════════════════════════════════════════════════════════
+   0. 确定性伪随机
+   ════════════════════════════════════════════════════════════ */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ════════════════════════════════════════════════════════════
+   1. 网格
+   ════════════════════════════════════════════════════════════ */
+var N = 128;
+var STRIDE = N + 1;
+var CELLS = STRIDE * STRIDE;
+var NIDX = new Int32Array(N + 1);
+for (var g = 0; g <= N; g++) NIDX[g] = g * STRIDE;
+
+var isBound = new Uint8Array(CELLS);
+(function(){
+  for (var y = 0; y <= N; y++) for (var x = 0; x <= N; x++) {
+    if (x === 0 || y === 0 || x === N || y === N) isBound[NIDX[y] + x] = 1;
+  }
+})();
+
+/* ════════════════════════════════════════════════════════════
+   2. 模态表
+   ════════════════════════════════════════════════════════════ */
+var FREQ_K = 0.15, FREQ_BASE = 1.0;
+var MODES = [
+  { m: 1, n: 1 }, { m: 2, n: 1 }, { m: 1, n: 2 }, { m: 2, n: 2 },
+  { m: 3, n: 1 }, { m: 1, n: 3 }, { m: 3, n: 2 }, { m: 2, n: 3 },
+  { m: 4, n: 1 }, { m: 1, n: 4 }, { m: 3, n: 3 }, { m: 4, n: 2 }
+];
+function modalFreq(m, n){ return FREQ_BASE + FREQ_K * (m * m + n * n); }
+function modeFit(f, m, n){ return 1 - Math.min(1, Math.abs(f - modalFreq(m, n)) / 0.5); }
+
+/* ════════════════════════════════════════════════════════════
+   3. 形状查找表：φ_{m,n}(x,y) = sin(mπx)·sin(nπy)，边界恒为 0
+   ════════════════════════════════════════════════════════════ */
+var shapeCache = new Map();
+function shapeOf(m, n){
+  var key = m + ',' + n;
+  var s = shapeCache.get(key);
+  if (s) return s;
+  s = new Float32Array(CELLS);
+  for (var y = 1; y < N; y++) for (var x = 1; x < N; x++) {
+    s[NIDX[y] + x] = Math.sin(Math.PI * m * (x / N)) * Math.sin(Math.PI * n * (y / N));
+  }
+  shapeCache.set(key, s);
+  return s;
+}
+
+/* ════════════════════════════════════════════════════════════
+   3b. 活动模态的形状缓存
+       每换一次模态组合，就把这 K 个模态的形状数组取出来放好，
+       之后所有内层循环只做类型化数组读取 —— 不再有 Map 查找、
+       不再有字符串键，也不再重复访问 MODES/act 这些跨上下文对象。
+   ════════════════════════════════════════════════════════════ */
+var shA = new Array(K), shB = new Array(K);
+function bindShapes(){
+  var i, md;
+  for (i = 0; i < K; i++) { md = MODES[actA[i]]; shA[i] = shapeOf(md.m, md.n); }
+  for (i = 0; i < K; i++) { md = MODES[actB[i]]; shB[i] = shapeOf(md.m, md.n); }
+}
+bindShapes();
+
+/* ════════════════════════════════════════════════════════════
+   3c. 包络场网格（每帧算一次，显示与沙粒共用）
+       用「模态在外、网格在内」的循环顺序：每个模态对整块网格
+       做一次连续扫描，写回同一条缓存线，比逐格遍历 12 个模态
+       快得多。显示与沙粒读的是同一张网格，所以「看到的暗线」
+       与「沙粒真正停下的地方」严格是同一个位置。
+   ════════════════════════════════════════════════════════════ */
+var ENV_GRID = new Float32Array(CELLS);   /* 归一化包络 |Σ a_k φ_k| */
+var ENV_NORM = 1;
+function computeEnv(){
+  var i, x, y, base, idx;
+  var cph = Math.cos(P.phase);
+  ENV_GRID.fill(0);
+  for (i = 0; i < K; i++) {
+    var a = AMAX[i], b = BMAX[i] * cph;
+    var sp = shA[i], sq = shB[i];
+    for (y = 0; y < N; y++) {
+      base = NIDX[y];
+      for (x = 0; x < N; x++) {
+        idx = base + x;
+        ENV_GRID[idx] += a * sp[idx] + b * sq[idx];
+      }
+    }
+  }
+  var inv = 1 / ENV_NORM;
+  for (var j = 0; j < CELLS; j++) ENV_GRID[j] *= inv;
+}
+function envSample(px, py, out){
+  /* 从包络网格双线性取样 */
+  var fxp = (px + 1) * 0.5 * N;
+  var fyp = (py + 1) * 0.5 * N;
+  var x0 = fxp | 0, y0 = fyp | 0;
+  if (x0 > N - 1) x0 = N - 1;
+  if (y0 > N - 1) y0 = N - 1;
+  var tx = fxp - x0, ty = fyp - y0;
+  var i00 = NIDX[y0] + x0;
+  var w00 = (1 - tx) * (1 - ty), w10 = tx * (1 - ty);
+  var w01 = (1 - tx) * ty, w11 = tx * ty;
+  out.d = ENV_GRID[i00] * w00 + ENV_GRID[i00 + 1] * w10
+        + ENV_GRID[i00 + STRIDE] * w01 + ENV_GRID[i00 + STRIDE + 1] * w11;
+  return out;
+}
+
+/* ════════════════════════════════════════════════════════════
+   3d. 调色板查找表
+       渲染每帧要对 16384 个格子算一次 Math.pow + 调色板插值，
+       这是显示路径上最贵的一步。改成预计算 1024 级 LUT，
+       渲染时只做一次取整和三次数组读取。sharp / palette 变化时重建。
+   ════════════════════════════════════════════════════════════ */
+var PAL_LUT = new Uint8Array(1024 * 3);
+var PAL_LUT_BUILT = false;
+function buildPalLUT(){
+  if (typeof P === 'undefined' || !P) return;   /* 参数表还没建好时先跳过 */
+  var sharp = P.sharp;
+  for (var i = 0; i < 1024; i++) {
+    var c = paletteAt(Math.pow(i / 1023, sharp));
+    PAL_LUT[i * 3] = c[0]; PAL_LUT[i * 3 + 1] = c[1]; PAL_LUT[i * 3 + 2] = c[2];
+  }
+  PAL_LUT_BUILT = true;
+}
+buildPalLUT();
+
+/* ════════════════════════════════════════════════════════════
+   4. 每块板的状态：K 个模态坐标 (a, va)
+      每个驻波模态各自作为受迫阻尼谐振子积分。
+      零模态 (1,1) 永远进不了这个基（m,n ≥ 1），
+      所以高阶模态的节点线不会被一个无节点的分量抹平。
+   ════════════════════════════════════════════════════════════ */
+var K = 6;
+var pa = new Float32Array(K), pva = new Float32Array(K);
+var pb = new Float32Array(K), pvb = new Float32Array(K);
+var AMAX = new Float32Array(K), BMAX = new Float32Array(K);
+
+var actA = [0, 1, 2, 3, 4, 5];
+var actB = [0, 1, 2, 3, 4, 5];
+function natFreqOf(ix){ var md = MODES[ix]; return modalFreq(md.m, md.n); }
+
+/* ════════════════════════════════════════════════════════════
+   5. 参数
+   ════════════════════════════════════════════════════════════ */
+var P = {
+  freqS: 0.375, freq: 1.30, drive: 0.60, phase: 0,   /* 默认正好落在 (1,1) 的共振点上 */
+  sharp: 3.0, palette: 1,
+  grains: 12000, jitter: 0.70, fade: 0.045,
+  accum: false, vectors: false, nodes: false
+};
+var DRIVE_SCALE = 0.9;        /* 驱动强度（对贴合度加权） */
+var DAMP = 0.030;             /* 模态阻尼比 ζ（轻阻尼，共振才出峰） */
+var GRAIN_FRIC = 0.020;       /* 沙粒动摩擦 */
+var PIN_GAIN = 0.010;         /* 按住点（形成节点）的强度 */
+var PIN_TARGET = 0.9;         /* 按住点目标位移 */
+var POT_GAIN = 0.55;          /* 法向回复：把沙粒压向节点线 */
+var TAN_GAIN = 0.25;          /* 切向推进：沿等势线排开成线 */
+var JT = 0.55;                /* 热扰动系数 */
+var DT = 0.016;
+var OMEGA = 0, timeNow = 0;
+
+function applyFreq(){
+  /* 滑杆全程扫过模态谱的低频段：f ∈ [1.00, 1.80]，
+     覆盖 (1,1)=1.30 与 (2,1)/(1,2)=1.75 两族。 */
+  P.freq = 1.0 + 0.80 * P.freqS;
+  OMEGA = 2 * Math.PI * P.freq;
+}
+applyFreq();
+
+/* ════════════════════════════════════════════════════════════
+   6. 沙粒
+   ════════════════════════════════════════════════════════════ */
+var MAXG = 40000;
+var gx = new Float32Array(MAXG), gy = new Float32Array(MAXG);
+var gvx = new Float32Array(MAXG), gvy = new Float32Array(MAXG);
+var gCount = 0;
+
+function addGrains(n, seed){
+  var rng = seed ? mulberry32(seed) : null;
+  if (n > MAXG) n = MAXG;
+  for (var i = gCount; i < n; i++) {
+    if (rng) { gx[i] = (rng() * 2 - 1) * 0.96; gy[i] = (rng() * 2 - 1) * 0.96; }
+    else { gx[i] = (Math.random() * 2 - 1) * 0.96; gy[i] = (Math.random() * 2 - 1) * 0.96; }
+    gvx[i] = 0; gvy[i] = 0;
+  }
+  gCount = n;
+}
+function clearGrains(){ gCount = 0; }
+
+/* ════════════════════════════════════════════════════════════
+   7. 按住点
+   ════════════════════════════════════════════════════════════ */
+var pin = { on: false, side: 0, x: 0, y: 0, m: 1, n: 1 };
+var PIN_IDX = -1;
+
+function pinPoint(px, py){
+  var fxp = (px + 1) * 0.5 * N, fyp = (py + 1) * 0.5 * N;
+  var x0 = Math.max(1, Math.min(N - 1, Math.round(fxp)));
+  var y0 = Math.max(1, Math.min(N - 1, Math.round(fyp)));
+  return NIDX[y0] + x0;
+}
+
+/* 捏住一点 = 给模态振幅加一条线性约束：Σ a_k·φ_k(pin) = 0。
+   做法是把振幅向量投影到该约束的超平面上（最小范数修正）：
+       a_k ← a_k − (Σ a_j c_j) · c_k / (Σ c_j²)，c_k = φ_k(pin)
+   这样合成场在按住点严格为零，且对原有振型的扰动最小。 */
+function projectPin(a, sh){
+  if (PIN_IDX < 0) return;
+  var i, s = 0, norm = 0;
+  for (i = 0; i < K; i++) norm += sh[i][PIN_IDX] * sh[i][PIN_IDX];
+  if (norm < 1e-9) return;
+  for (i = 0; i < K; i++) s += a[i] * sh[i][PIN_IDX];
+  for (i = 0; i < K; i++) a[i] -= s * sh[i][PIN_IDX] / norm;
+}
+
+/* ════════════════════════════════════════════════════════════
+   8. 物理：模态坐标上的受迫阻尼谐振子
+      每个模态是 ÿ + 2ζωn ẏ + ωn²y = F·sin(Ωt)，
+      其稳态解是解析的：
+          a(t) = A·cos(Ωt − θ)
+          A = F / sqrt((ωn²−Ω²)² + (2ζωnΩ)²)
+          θ = atan2(2ζωnΩ, ωn²−Ω²)
+      用解析解而不是数值积分，所以振幅严格有界、且共振峰真实存在。
+      注意 ωn 与 Ω 必须同为角频率，否则失谐项会差 (2π)² 倍。
+   ════════════════════════════════════════════════════════════ */
+function modalSteady(fNatCyc, fit, drive, t, phase){
+  /* fNatCyc 是循环频率 f；Ω 也是循环频率 × 2π，两者统一到角频率 */
+  var wn = 2 * Math.PI * fNatCyc;
+  var w2 = OMEGA * OMEGA;
+  var wn2 = wn * wn;
+  var F = drive * fit;
+  var den = Math.sqrt((wn2 - w2) * (wn2 - w2) + 4 * DAMP * DAMP * wn2 * w2);
+  var A = den > 1e-9 ? F / den : 0;
+  if (A > 12) A = 12;
+  var th = Math.atan2(2 * DAMP * wn * OMEGA, wn2 - w2);
+  /* 平均输入功率 = ½·F·A·Ω·sinθ；稳态时它恰等于阻尼耗散功率 */
+  var pin = 0.5 * F * A * OMEGA * Math.sin(th);
+  return { A: A, v: A * Math.cos(OMEGA * t + phase - th), pin: pin };
+}
+
+function stepPlates(){
+  var i, ix, f, fit, drive = P.drive * DRIVE_SCALE;
+  var dampLoss = 0, injected = 0;
+  var t = timeNow;
+
+  /* ── 板 A ── */
+  for (i = 0; i < K; i++) {
+    ix = actA[i];
+    f = natFreqOf(ix);
+    fit = modeFit(P.freq, MODES[ix].m, MODES[ix].n);
+    var amp = 0;
+    if (drive > 0.00001) {
+      var s = modalSteady(f, fit, drive, t, 0);
+      amp = s.v;
+      injected += s.pin;
+      dampLoss += 2 * DAMP * (2 * Math.PI * f) * (s.A * OMEGA) * (s.A * OMEGA) * 0.5;
+    }
+    pa[i] = amp;
+  }
+  if (pin.on && pin.side === 0) projectPin(pa, shA);
+  for (i = 0; i < K; i++) AMAX[i] = Math.abs(pa[i]);
+
+  /* ── 板 B ── */
+  for (i = 0; i < K; i++) {
+    ix = actB[i];
+    f = natFreqOf(ix);
+    fit = modeFit(P.freq, MODES[ix].m, MODES[ix].n);
+    var ampB = 0;
+    if (drive > 0.00001) {
+      var sb = modalSteady(f, fit, drive, t, P.phase);
+      ampB = sb.v;
+      injected += sb.pin;
+      dampLoss += 2 * DAMP * (2 * Math.PI * f) * (sb.A * OMEGA) * (sb.A * OMEGA) * 0.5;
+    }
+    pb[i] = ampB;
+  }
+  if (pin.on && pin.side === 1) projectPin(pb, shB);
+  for (i = 0; i < K; i++) BMAX[i] = Math.abs(pb[i]);
+
+  /* 速度（供沙粒受力）：对时间求导 */
+  for (i = 0; i < K; i++) {
+    pva[i] = -pa[i] * OMEGA * Math.sin(OMEGA * t);
+    pvb[i] = -pb[i] * OMEGA * Math.sin(OMEGA * t + P.phase);
+  }
+
+  /* 包络归一化：显示与沙粒都作用在归一化后的场上，
+     这样节点线阈值是相对的，图案始终用满整个色带。 */
+  var norm = 0;
+  for (i = 0; i < K; i++) norm += Math.abs(AMAX[i]) + Math.abs(BMAX[i]);
+  ENV_NORM = norm > 1e-6 ? norm : 1;
+
+  return { damp: dampLoss, inj: injected };
+}
+
+/* ════════════════════════════════════════════════════════════
+   9. 位移场（双线性插值，供按住点使用）
+   ════════════════════════════════════════════════════════════ */
+function plateAt(a, sh, px, py, out){
+  var fxp = (px + 1) * 0.5 * N;
+  var fyp = (py + 1) * 0.5 * N;
+  var x0 = Math.floor(fxp), y0 = Math.floor(fyp);
+  if (x0 < 0) x0 = 0; else if (x0 > N - 1) x0 = N - 1;
+  if (y0 < 0) y0 = 0; else if (y0 > N - 1) y0 = N - 1;
+  var tx = fxp - x0, ty = fyp - y0;
+  var i00 = NIDX[y0] + x0, i10 = i00 + 1, i01 = i00 + STRIDE, i11 = i01 + 1;
+  var w00 = (1 - tx) * (1 - ty), w10 = tx * (1 - ty);
+  var w01 = (1 - tx) * ty, w11 = tx * ty;
+  var s = 0, i, v;
+  for (i = 0; i < K; i++) {
+    var shp = sh[i];
+    v = shp[i00] * w00 + shp[i10] * w10 + shp[i01] * w01 + shp[i11] * w11;
+    s += a[i] * v;
+  }
+  out.d = s;
+  return out;
+}
+var SA = {};
+
+/* ════════════════════════════════════════════════════════════
+   10. 沙粒推进
+       势能 V(x,y) = |归一化包络场|，其极小值就是节点线。
+       沙粒受法向线性回复力 −k·d·n̂（d = 到节点线的垂直距离），
+       把沙粒压向节点线；切向靠热扩散沿线排开。
+       关键：势能直接取自每帧算好的 ENV_GRID —— 与显示同一张场，
+       所以「看到的暗线」和「沙粒停下的地方」严格一致。
+   ════════════════════════════════════════════════════════════ */
+function stepGrains(dt){
+  var i, fricLoss = 0, kin = 0;
+  var jit = P.jitter * JT;
+  var h = 0.010;
+  var pxp, pyp, X, Y, V, Vx, Vy, nl, d, ux, uy;
+  var EG = ENV_GRID;
+
+  for (i = 0; i < gCount; i++) {
+    X = gx[i]; Y = gy[i];
+
+    /* 势能 V 及其数值梯度（在包络网格上取样） */
+    envSample(X, Y, SE);
+    V = Math.abs(SE.d);
+
+    pxp = X + h; if (pxp > 0.985) pxp = X - h;
+    pyp = Y + h; if (pyp > 0.985) pyp = Y - h;
+    envSample(pxp, Y, SE); Vx = Math.abs(SE.d);
+    envSample(X, pyp, SE); Vy = Math.abs(SE.d);
+
+    ux = (Vx - V) / h;
+    uy = (Vy - V) / h;
+    nl = Math.sqrt(ux * ux + uy * uy);
+
+    if (nl > 1e-9 && V > 1e-6) {
+      ux /= nl; uy /= nl;
+      /* 法向距离 d ≈ V / |∇V| */
+      d = V / nl;
+      /* 线性回复：力 = −k·d·n̂，把沙粒压向节点线 */
+      gvx[i] += -ux * POT_GAIN * d * dt;
+      gvy[i] += -uy * POT_GAIN * d * dt;
+    }
+
+    /* 热扩散：让沙粒越过浅势垒，落进节点线并沿线排开 */
+    gvx[i] += (Math.random() - 0.5) * jit * dt * 2;
+    gvy[i] += (Math.random() - 0.5) * jit * dt * 2;
+
+    gvx[i] *= (1 - GRAIN_FRIC);
+    gvy[i] *= (1 - GRAIN_FRIC);
+    fricLoss += GRAIN_FRIC * (gvx[i] * gvx[i] + gvy[i] * gvy[i]);
+
+    if (P.accum) {
+      var nx = X + gvx[i] * dt, ny = Y + gvy[i] * dt;
+      if (nx > -0.99 && nx < 0.99 && ny > -0.99 && ny < 0.99) {
+        envSample(nx, ny, SE);
+        if (Math.abs(SE.d) > V) { gvx[i] *= -0.25; gvy[i] *= -0.25; }
+      }
+    }
+
+    var nxp = X + gvx[i] * dt;
+    var nyp = Y + gvy[i] * dt;
+    if (nxp < -0.985) { nxp = -0.985; gvx[i] *= -0.2; }
+    else if (nxp > 0.985) { nxp = 0.985; gvx[i] *= -0.2; }
+    if (nyp < -0.985) { nyp = -0.985; gvy[i] *= -0.2; }
+    else if (nyp > 0.985) { nyp = 0.985; gvy[i] *= -0.2; }
+    gx[i] = nxp; gy[i] = nyp;
+
+    kin += gvx[i] * gvx[i] + gvy[i] * gvy[i];
+  }
+  return { fric: fricLoss, kin: kin };
+}
+var SE = {};
+
+/* ════════════════════════════════════════════════════════════
+   11. 审计
+   ════════════════════════════════════════════════════════════ */
+var acc = { inj: 0, damp: 0, fric: 0, kin: 0 };
+var accFrames = 0;
+function pushAudit(rP, rG){
+  acc.inj += rP.inj; acc.damp += rP.damp; acc.fric += rG.fric; acc.kin += rG.kin;
+  accFrames++;
+  if (accFrames >= 240) { acc.inj = acc.damp = acc.fric = acc.kin = 0; accFrames = 0; }
+}
+
+function conservationReport(){
+  var i, maxB = 0, e = 0, px = 0, py = 0;
+  var corners = [NIDX[0], NIDX[0] + N, NIDX[N], NIDX[N] + N];
+  for (i = 0; i < 4; i++) {
+    var idx = corners[i], s = 0;
+    for (var j = 0; j < K; j++) s += Math.abs(shA[j][idx]);
+    maxB = Math.max(maxB, s);
+  }
+  for (i = 0; i < K; i++) {
+    e += pa[i] * pa[i] + pva[i] * pva[i] + pb[i] * pb[i] + pvb[i] * pvb[i];
+  }
+  for (i = 0; i < gCount; i++) { px += gvx[i]; py += gvy[i]; }
+  document.getElementById('c-mass').textContent = gCount + ' 粒（不增不减）';
+  document.getElementById('c-bnd').textContent = maxB < 1e-6 ? '0（严格固定）' : maxB.toExponential(1);
+  document.getElementById('c-ene').textContent = e.toFixed(2) + '（有界）';
+  document.getElementById('c-mom').textContent = px.toFixed(1) + ', ' + py.toFixed(1);
+}
+
+/* ════════════════════════════════════════════════════════════
+   12. 渲染
+   ════════════════════════════════════════════════════════════ */
+var plate = document.getElementById('plate');
+var pctx = plate.getContext('2d');
+var CW = plate.width, CH = plate.height;
+
+var fieldCanvas = document.createElement('canvas');
+fieldCanvas.width = N; fieldCanvas.height = N;
+var fctx = fieldCanvas.getContext('2d');
+var fieldImg = fctx.createImageData(N, N);
+
+var sandCanvas = document.createElement('canvas');
+sandCanvas.width = CW; sandCanvas.height = CH;
+var sctx = sandCanvas.getContext('2d');
+
+var PALETTES = [
+  ['冰蓝', [[8,10,16],[24,44,74],[46,96,140],[94,200,255],[226,246,255]]],
+  ['琥珀', [[10,6,4],[58,22,12],[140,54,22],[255,158,64],[255,244,214]]],
+  ['苔绿', [[4,8,14],[14,34,30],[26,92,66],[94,232,166],[224,255,240]]],
+  ['紫晶', [[6,4,12],[34,16,52],[84,42,128],[190,116,232],[244,232,255]]]
+];
+function paletteAt(t){
+  var stops = PALETTES[P.palette | 0][1];
+  if (t < 0) t = 0; else if (t > 1) t = 1;
+  var seg = t * (stops.length - 1);
+  var i = Math.floor(seg);
+  if (i > stops.length - 2) i = stops.length - 2;
+  var tt = seg - i;
+  var a = stops[i], b = stops[i + 1];
+  return [
+    (a[0] + (b[0] - a[0]) * tt) | 0,
+    (a[1] + (b[1] - a[1]) * tt) | 0,
+    (a[2] + (b[2] - a[2]) * tt) | 0
+  ];
+}
+
+/* 归一化包络场：直接取自每帧算好的 ENV_GRID。
+   与沙粒的势能场是同一张网格 —— 所以「显示的暗线」
+   与「沙粒真正停下的地方」是同一个位置，不是两幅图。 */
+function renderField(){
+  var d = fieldImg.data;
+  for (var y = 0; y < N; y++) {
+    var base = NIDX[y];
+    for (var x = 0; x < N; x++) {
+      var a = ENV_GRID[base + x];
+      if (a < 0) a = -a;
+      var li = (a * 1023) | 0;
+      if (li > 1023) li = 1023;
+      var o = (y * N + x) * 4, p = li * 3;
+      d[o] = PAL_LUT[p]; d[o + 1] = PAL_LUT[p + 1]; d[o + 2] = PAL_LUT[p + 2]; d[o + 3] = 255;
+    }
+  }
+  fctx.putImageData(fieldImg, 0, 0);
+}
+
+function renderSand(){
+  var i, px, py;
+  sctx.globalCompositeOperation = 'source-over';
+  sctx.fillStyle = 'rgba(6,7,11,' + P.fade + ')';
+  sctx.fillRect(0, 0, CW, CH);
+  if (gCount === 0) return;
+  sctx.globalCompositeOperation = 'lighter';
+  sctx.fillStyle = 'rgba(238,242,248,0.6)';
+  sctx.beginPath();
+  for (i = 0; i < gCount; i++) {
+    px = (gx[i] + 1) * 0.5 * CW;
+    py = (1 - (gy[i] + 1) * 0.5) * CH;
+    sctx.rect(px, py, 1.3, 1.3);
+  }
+  sctx.fill();
+  sctx.globalCompositeOperation = 'source-over';
+}
+
+function drawOverlay(){
+  var x, y, idx, v, px, py;
+  var cph = Math.cos(P.phase);
+  var sph = Math.sin(P.phase);
+
+  if (P.nodes) {
+    pctx.save();
+    pctx.globalCompositeOperation = 'lighter';
+    pctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    pctx.lineWidth = 1.2;
+    pctx.beginPath();
+    for (y = 0; y <= N; y++) {
+      for (x = 0; x <= N; x++) {
+        v = ENV_GRID[NIDX[y] + x];
+        if (Math.abs(v) < 0.045) {
+          px = x * CW / N; py = y * CH / N;
+          pctx.moveTo(px, py);
+          pctx.lineTo(px + 1.5, py + 1.5);
+        }
+      }
+    }
+    pctx.stroke();
+    pctx.restore();
+  }
+
+  if (P.vectors) {
+    pctx.save();
+    pctx.globalCompositeOperation = 'lighter';
+    pctx.strokeStyle = 'rgba(120,210,255,0.4)';
+    pctx.lineWidth = 1;
+    pctx.beginPath();
+    var st = 16;
+    for (y = st; y < N; y += st) {
+      for (x = st; x < N; x += st) {
+        idx = NIDX[y] + x;
+        var u = 0, sb = 0;
+        for (var i = 0; i < K; i++) {
+          u += AMAX[i] * shA[i][idx];
+          sb += BMAX[i] * shB[i][idx];
+        }
+        var sx = u + sb * cph, sy = sb * sph;
+        var len = Math.sqrt(sx * sx + sy * sy);
+        if (len < 1e-5) continue;
+        var sc = 9 / len;
+        px = x * CW / N; py = y * CH / N;
+        pctx.moveTo(px, py);
+        pctx.lineTo(px + sx * sc, py + sy * sc);
+      }
+    }
+    pctx.stroke();
+    pctx.restore();
+  }
+
+  if (pin.on) {
+    pctx.save();
+    pctx.strokeStyle = 'rgba(255,196,84,0.9)';
+    pctx.lineWidth = 1.5;
+    var hx = (pin.x + 1) * 0.5 * CW, hy = (1 - (pin.y + 1) * 0.5) * CH;
+    pctx.beginPath(); pctx.arc(hx, hy, 11, 0, 6.2832); pctx.stroke();
+    pctx.beginPath();
+    pctx.moveTo(hx - 17, hy); pctx.lineTo(hx + 17, hy);
+    pctx.moveTo(hx, hy - 17); pctx.lineTo(hx, hy + 17);
+    pctx.stroke();
+    pctx.restore();
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   13. 自然语言解读卡
+   ════════════════════════════════════════════════════════════ */
+function describe(){
+  var aMd = MODES[actA[0]], bMd = MODES[actB[0]];
+  var fA = modalFreq(aMd.m, aMd.n), fB = modalFreq(bMd.m, bMd.n);
+  var fitA = modeFit(P.freq, aMd.m, aMd.n), fitB = modeFit(P.freq, bMd.m, bMd.n);
+  var cards = [];
+  var same = Math.abs(fA - fB) < 0.001;
+
+  if (same) {
+    cards.push({
+      t: '简并：两块板在同一个频率上振动',
+      p: '板 A 与板 B 的自然频率都是 f = ' + fA.toFixed(2) + '（板 A 主模态 (' + aMd.m + ',' + aMd.n + ')）。' +
+         '同频意味着两者相干：节点线不再是一组平行线，而是一张互相锁死的网 —— ' +
+         '板 B 的节点把板 A 的腹区切成小块，沙粒只能停在这些小块之间。' +
+         '把相位差拉到 90° 再拉回 0°：同相时网最锐利，异相时网会散开。',
+      f: 'f_A = f_B = ' + fA.toFixed(2) + '\nΔφ = ' + (P.phase * 180 / Math.PI).toFixed(0) + '°\n简并 → 可相干叠加'
+    });
+  } else {
+    cards.push({
+      t: '双频：两块板各振各的',
+      p: '板 A 在 f = ' + fA.toFixed(2) + '，板 B 在 f = ' + fB.toFixed(2) + '。' +
+         '频率不同就不能相干叠加，也就没有稳定节点线：沙粒会在两套图样之间被来回推，' +
+         '长看是一条模糊带而不是一条线。这不是坏了，是「非简并」本来的样子 —— ' +
+         '真实板子上两块板频率一旦错开，克拉尼图确实会随时间漂移。',
+      f: 'f_A = ' + fA.toFixed(2) + '\nf_B = ' + fB.toFixed(2) + '\nΔf = ' + Math.abs(fA - fB).toFixed(2) + ' → 拍频'
+    });
+  }
+
+  if (fitA < 0.45 || fitB < 0.45) {
+    var weak = fitA < fitB ? '板 A' : '板 B';
+    var wf = fitA < fitB ? fA : fB;
+    cards.push({
+      t: '激励偏了：' + weak + ' 没被有效驱动',
+      p: '当前激振频率 f = ' + P.freq.toFixed(3) + '，而这块板的自然频率是 ' + wf.toFixed(2) + '。' +
+         '驱动注入的能量会先被阻尼吃掉，振幅停在很低的水平 —— 所以图样淡、沙粒几乎不动。' +
+         '把激振频率滑向 ' + wf.toFixed(2) + '（贴合度 → 1），振幅会自己长起来。',
+      f: '贴合度 A = ' + fitA.toFixed(2) + '\n贴合度 B = ' + fitB.toFixed(2) + '\n→ 目标频率 ' + wf.toFixed(2)
+    });
+  } else {
+    cards.push({
+      t: '激励贴合：两块板都在自己的自然频率附近',
+      p: '贴合度 A = ' + fitA.toFixed(2) + '，B = ' + fitB.toFixed(2) + '。驱动注入与阻尼耗散接近平衡，' +
+         '振幅稳定在峰值上。右侧「能量收支」表里驱动注入与阻尼耗散应当量级相当 —— ' +
+         '净收支长期为正说明驱动过强，振幅会继续爬升。',
+      f: '贴合度 A = ' + fitA.toFixed(2) + '\n贴合度 B = ' + fitB.toFixed(2) + '\n→ 共振点，振幅有界'
+    });
+  }
+
+  cards.push({
+    t: '相位差 ' + (P.phase * 180 / Math.PI).toFixed(0) + '°',
+    p: P.phase < 0.02
+      ? '两块板同相：合成位移在两板同向时达到峰值，节点线最细最锐利，沙粒迁移最快。'
+      : '两块板相差 ' + (P.phase * 180 / Math.PI).toFixed(0) + '°：合成场随时间在两种极端构型之间摆动，' +
+        '节点线会在屏幕上缓慢扫过 —— 这就是克拉尼图「会动」的来源。接近 180° 时两板反相，节点线整体平移。',
+    f: 'Δφ = ' + P.phase.toFixed(3) + ' rad\n相干度 = ' + (Math.abs(Math.cos(P.phase)) * 100).toFixed(0) + '%'
+  });
+
+  if (pin.on) {
+    cards.push({
+      t: '你按住了一个点 —— 那是新加的一条边界',
+      p: '按住处被钉在固定位移上，等价于给这块板加了一个支点。' +
+         '支点周围的所有模态都必须在那里过零，于是节点线被强行拉到按住处 —— ' +
+         '真实克拉尼板实验里，手指按住的正是这个作用。' +
+         '按住板 A 与按住板 B 效果不同：分别会把节点线拉进各自的图样，两个支点的节点线会在屏幕上交叉。',
+      f: '支点 (' + pin.m + ',' + pin.n + ') @ (' + pin.x.toFixed(2) + ', ' + pin.y.toFixed(2) + ')\n→ 节点线被拉过该点'
+    });
+  }
+
+  return cards;
+}
+
+function renderPlain(){
+  var host = document.getElementById('plain');
+  host.textContent = '';
+  describe().forEach(function(c){
+    var d = document.createElement('div');
+    d.className = 'pcard';
+    var h = document.createElement('h3');
+    var b = document.createElement('b');
+    b.textContent = c.t;
+    h.appendChild(b);
+    var p = document.createElement('p');
+    p.textContent = c.p;
+    var f = document.createElement('div');
+    f.className = 'fig';
+    f.textContent = c.f;
+    d.appendChild(h); d.appendChild(p); d.appendChild(f);
+    host.appendChild(d);
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   14. 模态组合
+   ════════════════════════════════════════════════════════════ */
+var PRESETS = [
+  { name: '基频 (1,1)', note: '两块板同频', a: [0, 1, 2, 3, 4, 5], b: [0, 2, 1, 3, 5, 4] },
+  { name: '简并 (2,1)+(1,2)', note: '同频异形', a: [1, 2, 0, 3, 4, 5], b: [2, 1, 0, 3, 5, 4] },
+  { name: '双频 (1,1)/(1,2)', note: '错开 0.45', a: [0, 1, 2, 3, 4, 5], b: [2, 1, 0, 3, 5, 4] },
+  { name: '双频 (2,2)/(3,1)', note: '错开 0.30', a: [3, 0, 1, 2, 4, 5], b: [4, 0, 1, 2, 3, 5] }
+];
+var presetIx = 0;
+
+function buildModes(){
+  var host = document.getElementById('modes');
+  host.textContent = '';
+  PRESETS.forEach(function(pr, i){
+    var btn = document.createElement('button');
+    var nm = document.createElement('span'); nm.className = 'mname'; nm.textContent = pr.name;
+    var nt = document.createElement('span'); nt.className = 'mnote'; nt.textContent = pr.note;
+    btn.appendChild(nm); btn.appendChild(nt);
+    btn.addEventListener('click', function(){ setPreset(i); });
+    host.appendChild(btn);
+  });
+  markModes();
+}
+function markModes(){
+  var kids = document.getElementById('modes').children;
+  for (var i = 0; i < kids.length; i++) {
+    if (i === presetIx) kids[i].classList.add('on'); else kids[i].classList.remove('on');
+  }
+}
+function setPreset(i){
+  presetIx = i;
+  actA = PRESETS[i].a.slice();
+  actB = PRESETS[i].b.slice();
+  bindShapes();
+  markModes();
+  renderPlain();
+  updateStats();
+}
+
+/* ════════════════════════════════════════════════════════════
+   15. 控件
+   ════════════════════════════════════════════════════════════ */
+function bindRange(id, key, fmt, after){
+  var s = document.getElementById('s-' + id);
+  var v = document.getElementById('v-' + id);
+  s.addEventListener('input', function(){
+    P[key] = parseFloat(s.value);
+    if (v) v.textContent = fmt ? fmt(P[key]) : String(P[key]);
+    if (after) after();
+    updateStats();
+  });
+}
+bindRange('freq', 'freqS', function(){ return P.freq.toFixed(3); }, function(){ applyFreq(); renderPlain(); });
+bindRange('drive', 'drive', function(x){ return x.toFixed(2); });
+bindRange('phase', 'phase', function(x){ return (x * 180 / Math.PI).toFixed(0) + '°'; }, renderPlain);
+bindRange('sharp', 'sharp', function(x){ return x.toFixed(1); }, buildPalLUT);
+bindRange('palette', 'palette', function(x){ return PALETTES[x | 0][0]; }, buildPalLUT);
+/* 参数表就绪后补建一次 LUT（脚本前部调用时 P 还不存在） */
+buildPalLUT();
+bindRange('grains', 'grains', function(x){ return (x | 0).toLocaleString('en-US'); }, function(){
+  addGrains(P.grains | 0, 12345);
+});
+bindRange('jitter', 'jitter', function(x){ return x.toFixed(2); });
+bindRange('fade', 'fade', function(x){ return x.toFixed(3); });
+
+document.getElementById('c-accum').addEventListener('change', function(e){ P.accum = e.target.checked; });
+document.getElementById('c-vectors').addEventListener('change', function(e){ P.vectors = e.target.checked; });
+document.getElementById('c-nodes').addEventListener('change', function(e){ P.nodes = e.target.checked; });
+
+document.getElementById('b-add').addEventListener('click', function(){ addGrains(P.grains | 0, (Math.random() * 1e6) | 0); });
+document.getElementById('b-clear').addEventListener('click', clearGrains);
+document.getElementById('b-reset').addEventListener('click', resetAll);
+
+function resetAll(){
+  P.freqS = 0.375; P.drive = 0.60; P.phase = 0; P.sharp = 3; P.palette = 1;
+  P.grains = 12000; P.jitter = 0.70; P.fade = 0.045;
+  P.accum = P.vectors = P.nodes = false;
+  applyFreq();
+  var vals = { freq: 0.375, drive: 0.60, phase: 0, sharp: 3, palette: 1, grains: 12000, jitter: 0.70, fade: 0.045 };
+  Object.keys(vals).forEach(function(id){
+    var s = document.getElementById('s-' + id);
+    if (s) s.value = vals[id];
+  });
+  document.getElementById('v-freq').textContent = P.freq.toFixed(3);
+  document.getElementById('v-drive').textContent = P.drive.toFixed(2);
+  document.getElementById('v-phase').textContent = '0°';
+  document.getElementById('v-sharp').textContent = P.sharp.toFixed(1);
+  document.getElementById('v-palette').textContent = PALETTES[P.palette][0];
+  document.getElementById('v-grains').textContent = P.grains.toLocaleString('en-US');
+  document.getElementById('v-jitter').textContent = P.jitter.toFixed(2);
+  document.getElementById('v-fade').textContent = P.fade.toFixed(3);
+  ['c-accum', 'c-vectors', 'c-nodes'].forEach(function(id){
+    document.getElementById(id).checked = false;
+  });
+  pa.fill(0); pva.fill(0); pb.fill(0); pvb.fill(0);
+  AMAX.fill(0); BMAX.fill(0);
+  clearGrains();
+  addGrains(P.grains, 12345);
+  setPreset(0);
+  updateStats();
+}
+
+/* ════════════════════════════════════════════════════════════
+   16. 交互
+   ════════════════════════════════════════════════════════════ */
+function canvasToPlate(ev){
+  var r = plate.getBoundingClientRect();
+  return {
+    x: (ev.clientX - r.left) / r.width * 2 - 1,
+    y: 1 - (ev.clientY - r.top) / r.height * 2
+  };
+}
+
+plate.addEventListener('pointerdown', function(ev){
+  ev.preventDefault();
+  try { plate.setPointerCapture(ev.pointerId); } catch (err) {}
+  var p = canvasToPlate(ev);
+  pin.on = true;
+  pin.x = Math.max(-0.95, Math.min(0.95, p.x));
+  pin.y = Math.max(-0.95, Math.min(0.95, p.y));
+  pin.side = (ev.button === 2) ? 1 : 0;
+  pin.m = Math.max(1, Math.round((pin.x + 1) * 0.5 * 4));
+  pin.n = Math.max(1, Math.round((1 - (pin.y + 1) * 0.5) * 4));
+  PIN_IDX = pinPoint(pin.x, pin.y);
+  renderPlain();
+  showHint(pin.side === 0 ? '支点已加在板 A：节点线被拉过该点' : '支点已加在板 B：节点线被拉过该点');
+});
+plate.addEventListener('pointermove', function(ev){
+  if (!pin.on) return;
+  var p = canvasToPlate(ev);
+  pin.x = Math.max(-0.95, Math.min(0.95, p.x));
+  pin.y = Math.max(-0.95, Math.min(0.95, p.y));
+  PIN_IDX = pinPoint(pin.x, pin.y);
+});
+function endPin(){ if (!pin.on) return; pin.on = false; PIN_IDX = -1; renderPlain(); }
+plate.addEventListener('pointerup', endPin);
+plate.addEventListener('pointercancel', endPin);
+plate.addEventListener('contextmenu', function(ev){ ev.preventDefault(); });
+
+var hintTimer = null;
+function showHint(txt){
+  var h = document.getElementById('hint');
+  h.textContent = txt;
+  h.classList.add('show');
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(function(){ h.classList.remove('show'); }, 1800);
+}
+
+window.addEventListener('keydown', function(e){
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (e.key === ' ') { e.preventDefault(); addGrains(P.grains | 0, (Math.random() * 1e6) | 0); }
+  else if (e.key >= '0' && e.key <= '9') { setPreset(parseInt(e.key, 10) % PRESETS.length); }
+});
+
+/* ════════════════════════════════════════════════════════════
+   17. 统计
+   ════════════════════════════════════════════════════════════ */
+function updateStats(){
+  var aMd = MODES[actA[0]], bMd = MODES[actB[0]];
+  document.getElementById('st-modes').textContent = '(' + aMd.m + ',' + aMd.n + ') / (' + bMd.m + ',' + bMd.n + ')';
+  document.getElementById('st-fit').textContent =
+    modeFit(P.freq, aMd.m, aMd.n).toFixed(2) + ' / ' + modeFit(P.freq, bMd.m, bMd.n).toFixed(2);
+  document.getElementById('st-grains').textContent = gCount.toLocaleString('en-US');
+  document.getElementById('foot-mode').textContent =
+    '模态 (' + aMd.m + ',' + aMd.n + ') / (' + bMd.m + ',' + bMd.n + ') · f=' + P.freq.toFixed(3) +
+    ' · Δφ=' + (P.phase * 180 / Math.PI).toFixed(0) + '° · 沙粒 ' + gCount;
+}
+
+/* ════════════════════════════════════════════════════════════
+   18. 主循环
+   ════════════════════════════════════════════════════════════ */
+var frameNo = 0, lastT = 0, fpsAcc = 0, fpsN = 0;
+
+function loop(ts){
+  requestAnimationFrame(loop);
+  var dt = lastT ? Math.min(0.05, (ts - lastT) / 1000) : 0.016;
+  lastT = ts;
+  timeNow += dt;
+
+  var rP = stepPlates();
+  computeEnv();
+  var rG = stepGrains(dt);
+  pushAudit(rP, rG);
+
+  renderField();
+  renderSand();
+  pctx.clearRect(0, 0, CW, CH);
+  pctx.drawImage(fieldCanvas, 0, 0, CW, CH);
+  pctx.drawImage(sandCanvas, 0, 0);
+  drawOverlay();
+
+  fpsAcc += dt; fpsN++;
+  if ((frameNo++ & 15) === 0) {
+    updateStats();
+    if (fpsAcc > 0) {
+      document.getElementById('st-fps').textContent = Math.round(fpsN / fpsAcc) + ' fps';
+      fpsAcc = 0; fpsN = 0;
+    }
+    if (frameNo % 480 < 16) conservationReport();
+    document.getElementById('e-inj').textContent = acc.inj.toFixed(2);
+    document.getElementById('e-damp').textContent = acc.damp.toFixed(2);
+    document.getElementById('e-fric').textContent = acc.fric.toFixed(2);
+    document.getElementById('e-kin').textContent = acc.kin.toFixed(2);
+    document.getElementById('e-net').textContent = (acc.inj - acc.damp - acc.fric).toFixed(2);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   19. 参数全表
+   ════════════════════════════════════════════════════════════ */
+function buildTable(){
+  var lines = ['  序号  模态      自然频率   贴合度'];
+  MODES.forEach(function(md, i){
+    lines.push(
+      '  ' + (i < 10 ? ' ' : '') + i + '    (' + md.m + ',' + md.n + ')' +
+      '      ' + modalFreq(md.m, md.n).toFixed(2) +
+      '      ' + modeFit(P.freq, md.m, md.n).toFixed(2)
+    );
+  });
+  document.getElementById('table').textContent = lines.join('\n');
+}
+
+/* 启动 */
+buildModes();
+setPreset(0);
+addGrains(P.grains, 12345);
+buildTable();
+renderPlain();
+updateStats();
+conservationReport();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

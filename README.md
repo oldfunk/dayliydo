@@ -29,6 +29,7 @@
 | 不在场证明 | [alibi-grid](alibi-grid/) | 时间 × 地点的可达性约束传播：信错一句谎话，整行一起塌掉；凶手是被走廊挤出来的 |
 | 圆桌证词 | [roundtable-testimony](roundtable-testimony/) | 六人圆桌座位排列约束题：六份供述句句为真但人人只见局部，生成器保证唯一解 |
 | 像素地图生成器 | [pixel-map-generator](pixel-map-generator/) | 种子确定性 + 元胞自动机/距离场/递归回溯三种地形，导出 PNG/JSON |
+| 共振沙盘 | [resonance-sandbox](resonance-sandbox/) | 双板模态叠加 + 沙粒各向异性耗散：克拉德尼板可验证模拟，显示场与势能场共用一张网格 |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

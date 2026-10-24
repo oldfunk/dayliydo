@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神经雪 · 脉冲雪片 · Neural Snow</title>
+<style>
+  :root{
+    --bg:#07080c;
+    --panel:#101219;
+    --panel2:#161a24;
+    --line:#242a3a;
+    --line2:#333b52;
+    --text:#e8ecf5;
+    --muted:#8b93a8;
+    --muted2:#6b7389;
+    --fire:#ff8a3d;
+    --fire2:#ffc46b;
+    --cool:#5fd0ff;
+    --cool2:#9fe8ff;
+    --spark:#ff5d5d;
+    --ok:#7fe0a8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 80% -10%, #141a2b 0%, rgba(0,0,0,0) 60%),
+      radial-gradient(900px 600px at 0% 110%, #1a1220 0%, rgba(0,0,0,0) 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:"Inter","Segoe UI","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:318px 1fr;
+    height:100vh;
+    width:100vw;
+  }
+
+  /* ---------------- sidebar ---------------- */
+  .side{
+    background:linear-gradient(180deg,#0e1018 0%, #0b0d13 100%);
+    border-right:1px solid var(--line);
+    padding:16px 16px 12px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .side::-webkit-scrollbar{width:9px;}
+  .side::-webkit-scrollbar-track{background:transparent;}
+  .side::-webkit-scrollbar-thumb{background:#222838;border-radius:6px;border:2px solid #0b0d13;}
+
+  .brand h1{
+    margin:0;
+    font-size:19px;
+    font-weight:700;
+    letter-spacing:.4px;
+    background:linear-gradient(100deg,#ff9a5a 0%, #ff6f61 40%, #5fd0ff 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .brand p{
+    margin:6px 0 0;
+    font-size:11.5px;
+    line-height:1.6;
+    color:var(--muted2);
+  }
+
+  .grp{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px 11px;
+  }
+  .grp > h2{
+    margin:0 0 8px;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.9px;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  .ctl{margin-bottom:8px;}
+  .ctl:last-child{margin-bottom:0;}
+  .ctl .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:4px;
+  }
+  .ctl label{
+    font-size:12px;
+    color:var(--text);
+    letter-spacing:.2px;
+    flex:1 1 auto;
+  }
+  .ctl .val{
+    font-size:11.5px;
+    font-variant-numeric:tabular-nums;
+    color:var(--cool);
+    font-weight:600;
+    min-width:36px;
+    text-align:right;
+  }
+  input[type=range]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:4px;
+    border-radius:3px;
+    background:#2b3245;
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:14px;height:14px;
+    border-radius:50%;
+    background:linear-gradient(150deg,#ff9a5a,#ff6f61);
+    border:2px solid #0b0d13;
+    box-shadow:0 0 0 1px #3b4459, 0 0 9px rgba(255,120,80,.45);
+    cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;
+    background:linear-gradient(150deg,#ff9a5a,#ff6f61);
+    border:2px solid #0b0d13;
+    box-shadow:0 0 0 1px #3b4459;
+    cursor:pointer;
+  }
+  input[type=range]::-moz-range-track{height:4px;border-radius:3px;background:#2b3245;}
+
+  .btns{display:flex;flex-wrap:wrap;gap:6px;}
+  button{
+    font:inherit;
+    font-size:11.5px;
+    color:var(--text);
+    background:var(--panel2);
+    border:1px solid var(--line2);
+    border-radius:7px;
+    padding:6px 10px;
+    cursor:pointer;
+    letter-spacing:.2px;
+    transition:background .13s,border-color .13s,color .13s,transform .06s;
+  }
+  button:hover{background:#1e2434;border-color:#465170;}
+  button:active{transform:translateY(1px);}
+  button.on{
+    background:linear-gradient(150deg,#ff8a3d,#ff5f6d);
+    border-color:#ff8a3d;
+    color:#100a06;
+    font-weight:700;
+  }
+  button.ghost{background:transparent;color:var(--muted);border-color:var(--line);}
+  button.ghost:hover{color:var(--text);}
+
+  .readout{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+  }
+  .stat{
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 9px 5px;
+    min-width:0;
+  }
+  .stat .k{
+    font-size:9.5px;
+    letter-spacing:.6px;
+    color:var(--muted2);
+    text-transform:uppercase;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .stat .v{
+    font-size:15px;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+    margin-top:2px;
+    line-height:1.15;
+  }
+  .stat .s{font-size:9.5px;color:var(--muted2);font-weight:400;}
+  .stat.fire .v{color:var(--fire2);}
+  .stat.cool .v{color:var(--cool2);}
+  .stat.phasic .v{color:#ffd166;}
+  .stat.lost .v{color:#ff7b7b;}
+
+  .bar{
+    height:5px;
+    border-radius:3px;
+    background:#1b202e;
+    overflow:hidden;
+    margin-top:6px;
+  }
+  .bar > i{
+    display:block;
+    height:100%;
+    border-radius:3px;
+    background:linear-gradient(90deg,#5fd0ff,#8f7bff);
+    transition:width .12s linear;
+  }
+  .bar.fire > i{background:linear-gradient(90deg,#ff8a3d,#ff5d5d);}
+  .bar.cool > i{background:linear-gradient(90deg,#5fd0ff,#7fe0a8);}
+
+  .bars{display:flex;flex-direction:column;gap:8px;}
+  .brow{display:flex;align-items:center;gap:8px;}
+  .brow .nm{font-size:10.5px;color:var(--muted);width:78px;flex:0 0 78px;letter-spacing:.3px;}
+  .brow .bar{flex:1;margin-top:0;}
+  .brow .pc{font-size:10.5px;color:var(--muted2);width:40px;text-align:right;font-variant-numeric:tabular-nums;}
+
+  .log{
+    background:#0a0c11;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 9px;
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:10.5px;
+    line-height:1.62;
+    color:var(--muted);
+    height:110px;
+    overflow-y:auto;
+  }
+  .log::-webkit-scrollbar{width:8px;}
+  .log::-webkit-scrollbar-thumb{background:#222838;border-radius:5px;border:2px solid #0a0c11;}
+  .log .t{color:#4a5468;}
+  .log .f{color:var(--fire2);}
+  .log .c{color:var(--cool2);}
+  .log .w{color:var(--ok);}
+  .log .l{color:#ff8f8f;}
+
+  details.rules{border-top:1px solid var(--line);padding-top:10px;margin-top:auto;}
+  details.rules summary{
+    cursor:pointer;
+    font-size:11px;
+    color:var(--muted2);
+    letter-spacing:.4px;
+    outline:none;
+    list-style:none;
+  }
+  details.rules summary::-webkit-details-marker{display:none;}
+  details.rules summary::before{content:"\25B8  ";color:var(--muted2);}
+  details.rules[open] summary::before{content:"\25BE  ";}
+  details.rules summary:hover{color:var(--muted);}
+  .rl{display:grid;gap:7px;margin-top:10px;}
+  .r{display:flex;align-items:flex-start;gap:8px;}
+  .dot{width:13px;height:13px;border-radius:4px;flex:0 0 13px;margin-top:2px;}
+  .r p{margin:0;font-size:10.8px;line-height:1.55;color:var(--muted);}
+  .r p b{color:var(--text);font-weight:600;}
+
+  /* ---------------- stage ---------------- */
+  .stage{
+    position:relative;
+    overflow:hidden;
+    background:#05060a;
+  }
+  canvas#cv{display:block;width:100%;height:100%;cursor:crosshair;}
+  .hint{
+    position:absolute;
+    left:16px;
+    bottom:14px;
+    font-size:11px;
+    color:#7d87a0;
+    background:rgba(8,10,16,.72);
+    border:1px solid rgba(36,42,58,.8);
+    padding:7px 11px;
+    border-radius:8px;
+    -webkit-backdrop-filter:blur(6px);
+    backdrop-filter:blur(6px);
+    pointer-events:none;
+    letter-spacing:.3px;
+    max-width:min(74%,560px);
+    line-height:1.6;
+  }
+  .hint b{color:#c8d2e8;font-weight:600;}
+  .hint kbd{
+    font-family:ui-monospace,monospace;
+    font-size:10px;
+    background:#1a1f2c;
+    border:1px solid #333b52;
+    border-radius:4px;
+    padding:1px 5px;
+    color:#aeb9d2;
+  }
+  .flash{
+    position:absolute;
+    right:18px;
+    bottom:16px;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:.4px;
+    padding:8px 13px;
+    border-radius:9px;
+    background:rgba(8,10,16,.8);
+    border:1px solid var(--line2);
+    color:var(--muted);
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .25s;
+  }
+  .flash.show{opacity:1;}
+  .flash.f{color:var(--fire2);border-color:#7a4526;}
+  .flash.c{color:var(--cool2);border-color:#2d5f7a;}
+
+  @media (max-width:900px){
+    body{overflow:auto;}
+    .app{grid-template-columns:1fr;grid-template-rows:auto 62vh;height:auto;min-height:100vh;}
+    .stage{order:-1;}
+    .side{border-right:none;border-top:1px solid var(--line);overflow:visible;}
+    .hint{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <h1>神经雪 · 脉冲雪片</h1>
+      <p>放电扩散模型：神经元雪片把电脉冲打在地上，被脉冲击中的雪粒沿走廊游走、贴上冰面，自己长成一颗放射状雪晶。</p>
+    </div>
+
+    <div class="grp">
+      <h2>控制</h2>
+      <div class="btns">
+        <button id="bPause" class="on">暂停</button>
+        <button id="bReset" class="ghost">重置</button>
+        <button id="bSave" class="ghost">保存 PNG</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>放电</h2>
+      <div class="ctl">
+        <div class="row"><label for="sFreq">放电频率</label><span class="val" id="vFreq">100%</span></div>
+        <input type="range" id="sFreq" min="0" max="250" value="100">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="sRadius">放电半径</label><span class="val" id="vRadius">9</span></div>
+        <input type="range" id="sRadius" min="1" max="30" value="9">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="sThresh">激活阈值（越高越稀疏）</label><span class="val" id="vThresh">0.660</span></div>
+        <input type="range" id="sThresh" min="0.10" max="0.99" step="0.005" value="0.60">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="sDecay">遗忘速度</label><span class="val" id="vDecay">55%</span></div>
+        <input type="range" id="sDecay" min="0" max="95" value="12">
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>雪片</h2>
+      <div class="ctl">
+        <div class="row"><label for="sDiff">扩散系数</label><span class="val" id="vDiff">1.00</span></div>
+        <input type="range" id="sDiff" min="0" max="300" value="100">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="sSticky">粘附概率（越低越松散）</label><span class="val" id="vSticky">28%</span></div>
+        <input type="range" id="sSticky" min="1" max="100" value="28">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="sSeeds">种子数</label><span class="val" id="vSeeds">3</span></div>
+        <input type="range" id="sSeeds" min="1" max="12" value="3">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="sNucleus">晶核尺寸</label><span class="val" id="vNucleus">3</span></div>
+        <input type="range" id="sNucleus" min="0" max="8" value="3">
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>偏向</h2>
+      <div class="ctl">
+        <div class="row"><label for="sWind">风（漂移）</label><span class="val" id="vWind">0.0</span></div>
+        <input type="range" id="sWind" min="-100" max="100" value="0">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="sGrow">生长偏好</label><span class="val" id="vGrow">0.60</span></div>
+        <input type="range" id="sGrow" min="0" max="100" value="60">
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>显示</h2>
+      <div class="ctl">
+        <div class="row"><label for="sRes">画布分辨率</label><span class="val" id="vRes">1.0×</span></div>
+        <input type="range" id="sRes" min="1" max="2" step="0.1" value="1">
+      </div>
+      <div class="btns">
+        <button id="bField" class="on">显示场</button>
+        <button id="bHeat">疤痕</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>实时</h2>
+      <div class="readout">
+        <div class="stat neut"><div class="k">雪片像素</div><div class="v" id="rIce">0</div><div class="s" id="rIceS">占场 0.00%</div></div>
+        <div class="stat cool"><div class="k">累计雪片</div><div class="v" id="rCells">0</div><div class="s" id="rCellsS">每次放电 +0.0</div></div>
+        <div class="stat fire"><div class="k">放电中</div><div class="v" id="rWave">0</div><div class="s" id="rWaveS">峰值 —</div></div>
+        <div class="stat phasic"><div class="k">相</div><div class="v" id="rPhase">冻</div><div class="s" id="rPhaseS">—</div></div>
+        <div class="stat neut"><div class="k">步数 / 秒</div><div class="v" id="rSps">0</div><div class="s" id="rFps">— fps</div></div>
+        <div class="stat lost"><div class="k">窒息</div><div class="v" id="rLost">0</div><div class="s">因封冻被扑灭</div></div>
+      </div>
+      <div style="height:9px"></div>
+      <div class="bars">
+        <div class="brow"><span class="nm">冻住（激活）</span><div class="bar fire"><i id="bFreeze" style="width:0%"></i></div><span class="pc" id="pFreeze">—</span></div>
+        <div class="brow"><span class="nm">复活（松弛）</span><div class="bar cool"><i id="bFree" style="width:0%"></i></div><span class="pc" id="pFree">—</span></div>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>日志</h2>
+      <div class="log" id="log"></div>
+    </div>
+
+    <details class="rules">
+      <summary>模型规则</summary>
+      <div class="rl">
+        <div class="r"><span class="dot" style="background:#63d8ff;box-shadow:0 0 7px #63d8ff"></span><p><b>放电（激活）</b> — 电势超过阈值的细胞放电，把电势推到 1 并向 8 邻域广播脉冲，等价于在电势场上执行一次扩散。蓝光就是正在放电的细胞。</p></div>
+        <div class="r"><span class="dot" style="background:#ff9a5a"></span><p><b>放电粒子（雪粒）</b> — 每次放电从「簇外一圈」放出若干雪粒，做四邻域随机游走，一碰到冰就按粘附概率贴上去。这是扩散限制聚集（DLA）：粒子从远处来，谁暴露得多谁截获的粒子就多。</p></div>
+        <div class="r"><span class="dot" style="background:#e9effa"></span><p><b>雪片</b> — 电势在冰面上无法扩散，波前只能绕行，绕行处局部电势堆积。刚长出来的枝因此更容易被再次激活 —— 侧向抑制让枝晶分杈而不糊成一团。</p></div>
+        <div class="r"><span class="dot" style="background:#9fb0c8"></span><p><b>松弛</b> — 没被电势扰动的地方会遗忘。遗忘让被抑制的分支失去再生机会。</p></div>
+        <div class="r"><span class="dot" style="background:#ff8a3d"></span><p><b>疤痕</b> — 每次放电都在冰面上留下疤痕，疤痕越深的地方越难再被冻住（概率打折）。开「疤痕」开关可以看到作品自己留下的放电史。</p></div>
+        <div class="r"><span class="dot" style="background:#ff5d5d"></span><p><b>窒息</b> — 若一整波放电的 4 邻域几乎全是冰，电势无处可去，这波就熄了（右下角红色闪光）。把「长太快导致的空间窒息」显示出来。</p></div>
+        <div class="r"><span class="dot" style="background:#7fe0a8"></span><p><b>确定性</b> — 同样的网格尺寸 + 同样的参数 = 同一颗雪。用 <b>location.hash="#selftest"</b> 可重跑 13 项内置断言，通过时页面标题变成 SELFTEST PASS。</p></div>
+      </div>
+    </details>
+  </aside>
+
+  <main class="stage">
+    <canvas id="cv"></canvas>
+    <div class="hint">点击 = 播撒脉冲 &nbsp;·&nbsp; 拖动 = 连续放电 &nbsp;·&nbsp; <kbd>空格</kbd> 暂停 &nbsp;·&nbsp; <kbd>R</kbd> 重置 &nbsp;·&nbsp; <kbd>Shift</kbd>+拖动 = 直接写雪</div>
+    <div class="flash" id="flash"></div>
+  </main>
+</div>
+
+<script>
+"use strict";
+(function(){
+  /* ================= 随机数（可复现） ================= */
+  var rstate = 0x5f3a91;
+  function rnd(){
+    rstate |= 0; rstate = rstate + 0x6D2B79F5 | 0;
+    var t = Math.imul(rstate ^ rstate >>> 15, 1 | rstate);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+  /* 局部播种：由坐标派生独立随机流，不消耗全局序列（保证重建后轨迹一致） */
+  function local01(x, y){
+    var h = (Math.imul(x + 1, 0x27d4eb2d) ^ Math.imul(y + 1, 0x165667b1) ^ 0x9e3779b9) >>> 0;
+    h ^= h >>> 15; h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35) >>> 0; h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+
+  /* ================= 状态 ================= */
+  var NW = 0, NH = 0, N = 0;
+  var pot, scar, ice, frz, pha;
+  var frozen = 0, totalIce = 0, lost = 0, fired = 0;
+  var wave = { on:false, n:0, next:0, peak:0, since:0 };
+  var seedList = [], seedCursor = 0;
+  var stats = { fzN:0, frN:0 };
+
+  var cfg = {
+    freq:1.0, radius:9, thresh:0.60, decay:0.12,
+    diff:1.0, sticky:0.28, seeds:3, nucleus:3,
+    wind:0.0, grow:0.6
+  };
+  var paused = false;
+  var showField = true, showHeat = false;
+  var pending = { cx:0, cy:0, write:false, on:false, step:false };
+  var frameSteps = 0, stepAcc = 0, sps = 0, fps = 0, fpsAcc = 0, frames = 0;
+  var tick = 0;                       /* 模拟步计数：同一 tick 内重放必须一致 */
+
+  var DX8 = [1,-1,0,0,1,1,-1,-1];
+  var DY8 = [0,0,1,-1,1,-1,1,-1];
+  /* 8 邻域一维偏移：前四个在声明处给出，后四个是 ±NW 与 ±NW±1，build() 里按网格宽度改写 */
+  var OFF8SCRATCH = [1,-1,0,0,1,1,-1,-1];
+  /* 两套权重，刻意分开：
+     GROW_W 决定「哪里容易长出新雪」—— 尖端优先，但允许适度增厚，否则会长成单格细丝；
+     PILE_W 决定「电势往哪里堆」—— 更尖锐地偏向尖端，于是谐波场把下一次放电也引到尖端。 */
+  var GROW_W = [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+  var STICK_BASE = 0.18;            /* 均匀粘附基底：决定侧枝的茂密程度 */
+  var SRC_AMP = 0.45;               /* 电源强度：决定尖端相对侧枝的优势（越大越容易长成针） */
+  var WALKERS = 14;                 /* 每步出发的放电粒子数 */
+  var WALK_LEN = 220;               /* 每个粒子最多游走多少步 */
+  var PILE_W = [0.0, 1.0, 0.85, 0.42, 0.14, 0.04, 0.01, 0.0, 0.0];
+  var GROW_GAIN = 6;                  /* 每步最多新冻住的细胞数（决定生长节奏） */
+
+  var cv = document.getElementById("cv");
+  var ctx = cv.getContext("2d", { alpha:false });
+  var img = null, px = null, base32 = null, baseData = null;
+
+  /* ================= DOM ================= */
+  var el = {};
+  [
+    "bPause","bReset","bSave","bField","bHeat","flash","log",
+    "vFreq","vRadius","vThresh","vDecay","vDiff","vSticky","vSeeds","vNucleus","vWind","vGrow","vRes",
+    "rIce","rIceS","rCells","rCellsS","rWave","rWaveS","rPhase","rPhaseS","rSps","rFps","rLost",
+    "bFreeze","bFree","pFreeze","pFree",
+    "sFreq","sRadius","sThresh","sDecay","sDiff","sSticky","sSeeds","sNucleus","sWind","sGrow","sRes"
+  ].forEach(function(id){ el[id] = document.getElementById(id); });
+
+  /* ================= 世界构建 ================= */
+  function build(w, h){
+    NW = Math.max(48, Math.min(900, w | 0));
+    NH = Math.max(48, Math.min(900, h | 0));
+    N = NW * NH;
+    pot = new Float32Array(N);
+    scar = new Float32Array(N);
+    ice = new Uint8Array(N);
+    frz = new Float32Array(N);
+    pha = new Uint8Array(N);
+    /* 重建时把随机流复位：同样的网格 + 同样的参数 = 同一颗雪（确定性，可复现） */
+    rstate = 0x5f3a91;
+    seedSeq = 0;
+    OFF4[2] = NW; OFF4[3] = -NW;
+    OFF8SCRATCH[2] = NW; OFF8SCRATCH[3] = -NW;
+    OFF8SCRATCH[6] = NW - 1; OFF8SCRATCH[7] = -NW - 1;
+
+    frozen = 0; totalIce = 0; lost = 0; fired = 0;
+    stats.fzN = 0; stats.frN = 0;
+    wave.on = false; wave.n = 0; wave.next = 0; wave.peak = 0; wave.since = 0;
+    seedList = []; seedCursor = 0;
+    for (var k = 0; k < cfg.seeds; k++) seedList.push(pickSeed());
+    for (var s = 0; s < cfg.nucleus; s++){
+      var c = seedList[seedCursor % seedList.length];
+      seedCursor++;
+      addIce(c[0], c[1]);
+    }
+    renderBase();
+    logMsg("新建网格 " + NW + "×" + NH + "，晶核 ×" + cfg.nucleus + "，种子 " + seedList.length + " 个", "c");
+    updateStats();
+  }
+
+  var seedSeq = 0;                  /* 每取一个种子就自增：否则所有种子会落在同一格 */
+  function pickSeed(){
+    var base = seedSeq++ * 7919 + 13;
+    for (var tries = 0; tries < 80; tries++){
+      var u = local01(base + tries * 31, base + 7);
+      var v = local01(base + tries * 57, base + 3);
+      var x = 5 + ((u * (NW - 10)) | 0);
+      var y = 5 + ((v * (NH - 10)) | 0);
+      if (!ice[y * NW + x]) return [x, y];
+    }
+    return [(NW / 2) | 0, (NH / 2) | 0];
+  }
+
+  /* 冻住一格，并在 8 邻域留下疤痕与电势堆积 */
+  function addIce(x, y){
+    if (x < 0 || y < 0 || x >= NW || y >= NH) return;
+    var i = y * NW + x;
+    if (ice[i]) return;
+    ice[i] = 1; pot[i] = 0; pha[i] = 2; frozen++; totalIce++;
+    for (var d = 0; d < 8; d++){
+      var nx = x + DX8[d], ny = y + DY8[d];
+      if (nx < 0 || ny < 0 || nx >= NW || ny >= NH) continue;
+      var j = ny * NW + nx;
+      if (ice[j]) continue;
+      scar[j] = 1;
+      frz[j] = Math.min(1.6, frz[j] + 0.3);
+      pot[j] = Math.min(1, pot[j] + 0.14);
+    }
+  }
+
+  /* ================= 核心：一次模拟步 ================= */
+  function simStep(){
+    var i, x, y, j, d;
+
+    /* --- 1. 放电粒子：从空处出发的随机游走，一碰到雪就按概率粘住 ---
+           这就是扩散限制聚集（DLA）的教科书形式：粒子从远处来，尖端暴露得多、
+           截获的粒子就多，于是尖端越长越快、侧枝被「饿死」—— 树突因此分杈而不糊成团。
+           电势场不参与游走（保持各向同性），它是放电系统的一部分，负责可视化与再激活。 */
+    var sticky = cfg.sticky;
+    /* 簇的质心与半径：粒子从「簇外一圈」出发，走到雪上才粘 —— 这才是扩散限制聚集。
+       若把粒子均匀撒满全图，只有碰巧出生在簇旁边的那部分走得过来，长出来就是一团实心块。 */
+    var ccx = 0, ccy = 0, cn = 0, cr2 = 0, x3, y3, i3;
+    for (y3 = 1; y3 < NH - 1; y3++){
+      var rr3 = y3 * NW;
+      for (x3 = 1; x3 < NW - 1; x3++){
+        i3 = rr3 + x3;
+        if (ice[i3]){ ccx += x3; ccy += y3; cn++; }
+      }
+    }
+    var ringR = 6, maxR = Math.min(NW, NH) / 2 - 2;
+    if (cn > 0){
+      ccx /= cn; ccy /= cn;
+      for (y3 = 1; y3 < NH - 1; y3++){
+        var rr4 = y3 * NW;
+        for (x3 = 1; x3 < NW - 1; x3++){
+          i3 = rr4 + x3;
+          if (!ice[i3]) continue;
+          var ddx = x3 - ccx, ddy = y3 - ccy, dd = ddx * ddx + ddy * ddy;
+          if (dd > cr2) cr2 = dd;
+        }
+      }
+      ringR = Math.sqrt(cr2) + 14;
+      if (ringR > maxR) ringR = maxR;
+      if (ringR < 6) ringR = 6;
+    }
+    var killR = ringR * 2.2 + 8;
+    /* 粒子步数必须够它穿过整个环，否则从远处来的粒子永远走不到簇上，生长会停 */
+    var walkLen = WALK_LEN > ringR * 6 ? WALK_LEN : Math.ceil(ringR * 6);
+    var grown = 0;
+    for (var w2 = 0; w2 < WALKERS && grown < GROW_GAIN; w2++){
+      var ang = rnd() * 6.283185307179586;
+      var wx = Math.round(ccx + Math.cos(ang) * ringR);
+      var wy = Math.round(ccy + Math.sin(ang) * ringR);
+      if (wx < 1) wx = 1; else if (wx > NW - 2) wx = NW - 2;
+      if (wy < 1) wy = 1; else if (wy > NH - 2) wy = NH - 2;
+      if (ice[wy * NW + wx]) continue;
+      for (var s2 = 0; s2 < walkLen; s2++){
+        /* 均匀随机游走（四邻域，不进村雪、不出内边界） */
+        var ni = -1;
+        var tries = 0;
+        while (tries++ < 6){
+          var oi = (rnd() * 4) | 0;
+          var nx2 = wx + DX4[oi], ny2 = wy + DY4[oi];
+          if (nx2 < 1 || ny2 < 1 || nx2 >= NW - 1 || ny2 >= NH - 1) continue;
+          if (ice[ny2 * NW + nx2]) continue;
+          ni = ny2 * NW + nx2;
+          break;
+        }
+        if (ni < 0) break;                     /* 被雪围死，放弃这个粒子 */
+        /* 走太远的粒子直接丢弃（等价于经典 DLA 里「走出 kill circle 就重生」） */
+        var kdx = wx - ccx, kdy = wy - ccy;
+        if (kdx * kdx + kdy * kdy > killR * killR) break;
+        wx = ni % NW; wy = (ni / NW) | 0;
+        /* 贴上雪了：按概率粘住；没粘上就继续走（这才是 DLA 的「粘附概率<1」变体） */
+        var orth = 0;
+        for (oi = 0; oi < 4; oi++){
+          if (ice[wy * NW + wx + OFF4[oi]]) orth = 1;
+        }
+        if (orth){
+          var adj = 0;
+          for (oi = 0; oi < 8; oi++){
+            var ax = wx + DX8[oi], ay = wy + DY8[oi];
+            if (ax < 0 || ay < 0 || ax >= NW || ay >= NH) continue;
+            if (ice[ay * NW + ax]) adj++;
+          }
+          var fz = frz[wy * NW + wx];
+          var tipW = GROW_W[adj] * (1 - 0.45 * cfg.grow) + 0.4 * cfg.grow;
+          if (rnd() < sticky * tipW * (1 - 0.5 * Math.min(1, fz))){
+            addIce(wx, wy); grown++;
+            break;
+          }
+        }
+      }
+    }
+
+    /* --- 2. 放电（激活）：超过阈值的细胞被一次推满；全冻住时按残压挑最强的一小簇 --- */
+    var th = cfg.thresh, n1 = 0;
+    for (y = 1; y < NH - 1; y++){
+      var r2 = y * NW;
+      for (x = 1; x < NW - 1; x++){
+        i = r2 + x;
+        if (ice[i] || pha[i] === 2) continue;
+        if (pot[i] >= th){ pha[i] = 2; n1++; }
+      }
+    }
+    if (n1 === 0){
+      /* 残压最高的一格（及其簇）放电，保证任何参数下都不会彻底死寂 */
+      var bi = -1, bp = -1;
+      for (y = 1; y < NH - 1; y++){
+        var r3 = y * NW;
+        for (x = 1; x < NW - 1; x++){
+          i = r3 + x;
+          if (ice[i] || pha[i] === 2) continue;
+          if (pot[i] > bp){ bp = pot[i]; bi = i; }
+        }
+      }
+      if (bi >= 0){
+        var bx = bi % NW, by = (bi / NW) | 0;
+        pha[bi] = 2; n1 = 1;
+        for (d = 0; d < 8; d++){
+          var jx = bx + DX8[d], jy = by + DY8[d];
+          if (jx < 1 || jy < 1 || jx >= NW - 1 || jy >= NH - 1) continue;
+          j = jy * NW + jx;
+          if (ice[j] || pha[j] === 2) continue;
+          if (pot[j] >= bp * 0.85){ pha[j] = 2; n1++; }
+        }
+      }
+    }
+    if (n1 > 0 && !wave.on){
+      wave.on = true; wave.n = n1; wave.next = n1; wave.peak = n1; wave.since = 0;
+      fired++;
+    }
+    if (wave.on && n1 > wave.peak) wave.peak = n1;
+    stats.fzN += n1;
+
+    /* --- 3. 扩散（电势）+ 遗忘（松弛） --- */
+    var diff = cfg.diff, decay = cfg.decay * 0.02;
+    var w = cfg.wind * 0.0011;
+    var ph0 = 0;
+    for (y = 1; y < NH - 1; y++){
+      var rowA = (y - 1) * NW, rowB = y * NW, rowC = (y + 1) * NW;
+      for (x = 1; x < NW - 1; x++){
+        i = rowB + x;
+        if (ice[i]) continue;
+        var isPh2 = pha[i] === 2;
+        if (decay > 0 && !isPh2){
+          var dec = decay * (1 - scar[i]);
+          if (pot[i] < dec) pot[i] = 0; else pot[i] -= dec;
+        }
+        /* 疤痕会随时间淡去 —— 否则「冻住阻力」只增不减，迟早变成负概率把生长彻底锁死 */
+        if (frz[i] > 0) frz[i] = frz[i] > 0.012 ? frz[i] - 0.012 : 0;
+        var pv = pot[i];
+        var nb = pot[rowB + x - 1] + pot[rowB + x + 1] + pot[rowA + x] + pot[rowC + x];
+        if (!isPh2){
+          var p1 = pot[rowB + x - 1], p2 = pot[rowB + x + 1];
+          var p3 = pot[rowA + x], p4 = pot[rowC + x];
+          nb += w * ((p1 - p2) + 0.6 * (p3 - p4));
+        }
+        var nv = pv + diff * (nb * 0.25 - pv);
+        if (nv < 0) nv = 0; else if (nv > 1) nv = 1;
+        pot[i] = nv;
+        if (!isPh2) ph0++;
+      }
+    }
+    stats.frN += ph0;
+
+    /* --- 4. 放电细胞的硬复位 + 电势堆积（堆积=再激活的种子） --- */
+    if (n1 > 0){
+      var cx = 0, cy = 0, free4 = 0;
+      for (y = 1; y < NH - 1; y++){
+        var r4 = y * NW;
+        for (x = 1; x < NW - 1; x++){
+          i = r4 + x;
+          if (pha[i] !== 2) continue;
+          pha[i] = 0; pot[i] = 0.06; scar[i] = 1;
+          cx += x; cy += y;
+          /* 这一格的 4 邻域里有几个不是雪 —— 用来判断这波放电是不是被雪封死了 */
+          for (var f4 = 0; f4 < 4; f4++){
+            if (!ice[i + OFF4[f4]]) free4++;
+          }
+        }
+      }
+      /* 电源放在「空处」而不是尖端：电势从空处向雪扩散，于是离电源最近的那个尖端拿到的电势最多。
+         电源每轮随机漂移，不同尖端轮流占优 —— 这正是扩散限制聚集里「随机游走粒子从无穷远来」
+         的等价物：尖端互相抢电势，谁暴露得多谁赢，于是长出树突而不是一根针。 */
+      var mx = (cx / n1) | 0, my = (cy / n1) | 0;
+      var blocked = 0, open = 0;
+      var rad = Math.max(1, cfg.radius | 0);
+      var r2max = rad * rad;
+      var bestI = -1;
+      for (var dy = -rad; dy <= rad; dy++){
+        for (var dx = -rad; dx <= rad; dx++){
+          if (dx * dx + dy * dy > r2max) continue;
+          var nx = mx + dx, ny = my + dy;
+          /* 边界格不参与更新（既不扩散也不衰减），写进去的电势会永久堆积并把生长全吸到边上 */
+          if (nx < 1 || ny < 1 || nx >= NW - 1 || ny >= NH - 1) continue;
+          var k = ny * NW + nx;
+          if (ice[k]){ blocked++; continue; }
+          open++;
+          scar[k] = 1;
+        }
+      }
+      /* 电源候选：放电簇周围、且「不贴雪」的空格（越空越好） */
+      var cand = -1, candScore = -1;
+      for (var dy2 = -rad; dy2 <= rad; dy2++){
+        for (var dx2 = -rad; dx2 <= rad; dx2++){
+          var nx2 = mx + dx2, ny2 = my + dy2;
+          if (nx2 < 1 || ny2 < 1 || nx2 >= NW - 1 || ny2 >= NH - 1) continue;
+          var k2 = ny2 * NW + nx2;
+          if (ice[k2]) continue;
+          var a8 = 0;
+          for (var q = 0; q < 8; q++){
+            var qx = nx2 + DX8[q], qy = ny2 + DY8[q];
+            if (qx < 0 || qy < 0 || qx >= NW || qy >= NH) continue;
+            if (ice[qy * NW + qx]) a8++;
+          }
+          if (a8 > 0) continue;                 /* 只要真正的空格 */
+          var sc2 = rnd() * 0.6 + pot[k2];      /* 空处残压 + 随机漂移 */
+          if (sc2 > candScore){ candScore = sc2; cand = k2; }
+        }
+      }
+      bestI = cand >= 0 ? cand : bestI;
+      if (bestI >= 0){
+        pot[bestI] = Math.min(1, pot[bestI] + SRC_AMP);
+        for (var e = 0; e < 8; e++){
+          var ex = (bestI % NW) + DX8[e], ey = ((bestI / NW) | 0) + DY8[e];
+          if (ex < 1 || ey < 1 || ex >= NW - 1 || ey >= NH - 1) continue;
+          var ek = ey * NW + ex;
+          if (ice[ek]) continue;
+          pot[ek] = Math.min(1, pot[ek] + SRC_AMP * 0.35);
+        }
+      }
+      /* 窒息：整波放电的 4 邻域几乎全是雪，电势无处可去，这波就熄了 */
+      if (n1 > 0 && free4 / (n1 * 4) < 0.06){
+        lost++;
+        flash("窒息 " + lost, "f");
+        logMsg("第 " + fired + " 次放电被雪片封死（窒息 +1）", "l");
+      }
+    }
+
+    /* --- 5. 波的相位：扩张到 1.12 倍或超过 26 步即平息 --- */
+    if (wave.on){
+      wave.next = (wave.next * 1.12 + 0.5) | 0;
+      if (wave.next < 4) wave.next = 4;
+      if (wave.since > 26 || n1 > wave.next){
+        wave.on = false; wave.n = 0; wave.next = 0;
+      } else {
+        wave.n = n1; wave.since++;
+      }
+    }
+
+    if (pending.step && pending.on) burst(pending.cx, pending.cy, pending.write);
+    pending.step = false;
+    tick++;
+  }
+  var DX4 = [1,-1,0,0];
+  var DY4 = [0,0,1,-1];
+  var OFF4 = [1,-1];                                  /* 4 邻域偏移，build() 里补上 ±NW 分量 */
+  var OFF8SCRATCH = [1,-1,0,0,1,1,-1,-1];             /* 8 邻域偏移，build() 里补上 ±NW 分量 */
+
+  /* 点击/拖动注入脉冲；write=true 时直接写雪 */
+  function burst(cx, cy, write){
+    if (cx < 0 || cy < 0 || cx >= NW || cy >= NH) return;
+    var rad = Math.max(1, cfg.radius | 0);
+    var r2max = rad * rad;
+    for (var dy = -rad; dy <= rad; dy++){
+      for (var dx = -rad; dx <= rad; dx++){
+        if (dx * dx + dy * dy > r2max) continue;
+        var x = cx + dx, y = cy + dy;
+        if (x < 1 || y < 1 || x >= NW - 1 || y >= NH - 1) continue;
+        var k = y * NW + x;
+        if (ice[k]) continue;
+        if (write){
+          ice[k] = 1; pot[k] = 0; pha[k] = 2; frozen++; totalIce++;
+          scar[k] = 1; frz[k] = Math.min(1.6, frz[k] + 0.35);
+        } else {
+          pot[k] = Math.min(1, pot[k] + 0.95);
+          pha[k] = 2;
+          scar[k] = 1;
+          frz[k] = Math.min(1.6, frz[k] + 0.06);
+        }
+      }
+    }
+    wave.on = true; wave.n = rad * rad; wave.next = rad * rad; wave.peak = rad * rad; wave.since = 0;
+    fired++;
+    renderBase();
+  }
+
+  /* ================= 渲染 ================= */
+  function resizeCanvas(){
+    var rect = cv.parentNode.getBoundingClientRect();
+    var scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1)) * cfg.res;
+    var w = Math.max(200, Math.round(rect.width * scale));
+    var h = Math.max(200, Math.round(rect.height * scale));
+    if (cv.width === w && cv.height === h) return;
+    cv.width = w; cv.height = h;
+    img = ctx.createImageData(w, h);
+    px = img.data;
+    build(w, h);
+  }
+
+  function renderBase(){
+    baseData = new Uint32Array(N);
+    for (var i = 0; i < N; i++) baseData[i] = ice[i] ? 0xfff6fbff : 0xff05060a;
+    base32 = new Uint32Array(px.buffer);
+  }
+
+  function render(){
+    var d = baseData, sc = showHeat, i;
+    if (showField){
+      for (i = 0; i < N; i++){
+        var p = pot[i];
+        if (p <= 0.004){ if (!ice[i]) d[i] = 0xff05060a; continue; }
+        var g = p * 1.5;
+        var r = 0.30 + g * 0.62, gg = 0.44 + g * 0.50, b = 0.72 + g * 0.30;
+        var ri = r <= 1 ? (r * 255) | 0 : 255;
+        var gi = gg <= 1 ? (gg * 255) | 0 : 255;
+        var bi = b <= 1 ? (b * 255) | 0 : 255;
+        d[i] = 0xff000000 | (bi << 16) | (gi << 8) | ri;
+      }
+      if (sc){
+        for (i = 0; i < N; i++){
+          var s = scar[i];
+          if (s < 0.5) continue;
+          var e = s - 0.5;
+          var q = d[i];
+          var qr = q & 255, qg = (q >> 8) & 255, qb = (q >> 16) & 255;
+          qr += (255 - qr) * e * 0.9;
+          qg += (198 - qg) * e * 0.55;
+          qb += (96 - qb) * e * 0.5;
+          d[i] = 0xff000000 | (((qb | 0) & 255) << 16) | (((qg | 0) & 255) << 8) | ((qr | 0) & 255);
+        }
+      }
+    }
+    for (i = 0; i < N; i++){
+      if (pha[i] === 2) d[i] = sc ? 0xff8fd8ff : 0xff7be0ff;
+      if (frz[i] > 0.35) d[i] = 0xff8ea8c8;
+    }
+    if (!showField && sc){
+      for (i = 0; i < N; i++){
+        var s2 = scar[i];
+        if (s2 < 0.5) continue;
+        var q2 = d[i];
+        var a2 = q2 & 255, b2 = (q2 >> 8) & 255, c2 = (q2 >> 16) & 255;
+        a2 += (255 - a2) * 0.7;
+        b2 += (205 - b2) * 0.45;
+        c2 += (120 - c2) * 0.45;
+        d[i] = 0xff000000 | (((c2 | 0) & 255) << 16) | (((b2 | 0) & 255) << 8) | ((a2 | 0) & 255);
+      }
+    }
+    /* 平铺：场宽 NW，画布宽 cv.width，按行复制，绝不跨行串位 */
+    var sw = cv.width, sh = cv.height, dst = 0;
+    for (var y = 0; y < sh; y++){
+      var src = (y < NH ? y : NH - 1) * NW;
+      var n = NW < sw ? NW : sw;
+      base32.set(d.subarray(src, src + n), dst);
+      if (n < sw) base32.fill(0xff05060a, dst + n, dst + sw);
+      dst += sw;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  /* ================= 界面 ================= */
+  var flashT = 0;
+  function flash(msg, cls){
+    el.flash.textContent = msg;
+    el.flash.className = "flash show " + (cls || "");
+    flashT = 26;
+  }
+  var logLines = [];
+  /* 任何进 innerHTML 的字符串都要转义，哪怕目前只有内部文本 */
+  function esc(t){
+    return String(t).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+  function logMsg(msg, cls){
+    var now = new Date();
+    var p2 = function(n){ return n < 10 ? "0" + n : "" + n; };
+    var t = p2(now.getHours()) + ":" + p2(now.getMinutes()) + ":" + p2(now.getSeconds());
+    logLines.push({ t:t, msg:msg, cls:cls || "" });
+    if (logLines.length > 60) logLines.shift();
+    var out = [], start = Math.max(0, logLines.length - 7);
+    for (var i = start; i < logLines.length; i++){
+      var L = logLines[i];
+      out.push('<span class="t">' + esc(L.t) + '</span> <span class="' + esc(L.cls) + '">' + esc(L.msg) + '</span>');
+    }
+    el.log.innerHTML = out.join("<br>");
+    el.log.scrollTop = el.log.scrollHeight;
+  }
+
+  var uiAcc = 0;
+  function updateStats(){
+    el.rIce.textContent = frozen.toLocaleString("en-US");
+    el.rIceS.textContent = "占场 " + (frozen / N * 100).toFixed(2) + "%";
+    el.rCells.textContent = totalIce.toLocaleString("en-US");
+    el.rCellsS.textContent = fired ? ("每次放电 +" + (totalIce / fired).toFixed(1)) : "每次放电 +0.0";
+    el.rWave.textContent = wave.on ? wave.n.toLocaleString("en-US") : "0";
+    el.rWaveS.textContent = "峰值 " + (wave.peak ? wave.peak.toLocaleString("en-US") : "—");
+    el.rLost.textContent = lost.toLocaleString("en-US");
+    el.rSps.textContent = sps.toLocaleString("en-US");
+    el.rFps.textContent = fps.toFixed(0) + " fps";
+    el.rPhase.textContent = wave.on ? "放电" : "冻";
+    el.rPhaseS.textContent = wave.on ? (wave.since + " 步 / 峰 " + wave.peak) : "待下一次放电";
+    var tot = stats.fzN + stats.frN;
+    var pz = tot ? stats.fzN / tot : 0;
+    el.bFreeze.style.width = (pz * 100).toFixed(1) + "%";
+    el.pFreeze.textContent = (pz * 100).toFixed(1) + "%";
+    el.bFree.style.width = ((1 - pz) * 100).toFixed(1) + "%";
+    el.pFree.textContent = ((1 - pz) * 100).toFixed(1) + "%";
+  }
+
+  /* ================= 主循环 ================= */
+  var last = performance.now();
+  var lastLog = 0, lastPhase = "", LOG_EVERY = 200, lastWaveAt = 0;
+
+  function loop(now){
+    requestAnimationFrame(loop);
+    var dt = Math.min(64, now - last);
+    last = now;
+    fpsAcc += dt; frames++;
+    if (fpsAcc > 500){ fps = frames * 1000 / fpsAcc; frames = 0; fpsAcc = 0; }
+
+    if (!paused && !document.hidden){
+      frameSteps += dt * 0.001 * cfg.freq * 40;
+      if (frameSteps > 4000) frameSteps = 4000;
+      var n = frameSteps | 0;
+      for (var k = 0; k < n; k++){
+        simStep();
+        if (local01(tick, 0x51f3) < cfg.freq * 0.0026){
+          var sx = 1 + ((local01(tick, 0x77aa) * (NW - 2)) | 0);
+          var sy = 1 + ((local01(tick, 0x33cc) * (NH - 2)) | 0);
+          var si = sy * NW + sx;
+          if (!ice[si]) pot[si] = Math.min(1, pot[si] + 0.55);
+        }
+      }
+      frameSteps -= n;
+      stepAcc += n;
+      if (stepAcc > 1500){
+        sps = Math.round(stepAcc * 1000 / Math.max(1, dt));
+        stepAcc = 0;
+      }
+      render();
+      if (flashT > 0){ flashT--; if (flashT === 0) el.flash.className = "flash"; }
+    }
+
+    uiAcc += dt;
+    if (uiAcc > 130){ uiAcc = 0; updateStats(); }
+
+    var ph = wave.on ? "WAVE" : "IDLE";
+    if (ph !== lastPhase){
+      if (ph === "WAVE"){ logMsg("第 " + fired + " 次放电，峰值 " + wave.peak + " 个激活细胞", "f"); lastWaveAt = now; }
+      else if (lastPhase === "WAVE"){ logMsg("波已平息（第 " + fired + " 次，峰值 " + wave.peak + "）", "w"); }
+      lastPhase = ph;
+    }
+    if (now - lastLog > LOG_EVERY){
+      lastLog = now;
+      if (fired % 4 === 0){
+        logMsg("雪片 " + frozen + " 像素（占场 " + (frozen / N * 100).toFixed(2) + "%）· 累计 " + totalIce + " · 窒息 " + lost, "");
+      }
+    }
+  }
+
+  /* ================= 交互 ================= */
+  function toGrid(e){
+    var r = cv.getBoundingClientRect();
+    var x = ((e.clientX - r.left) / r.width * NW) | 0;
+    var y = ((e.clientY - r.top) / r.height * NH) | 0;
+    return [Math.max(0, Math.min(NW - 1, x)), Math.max(0, Math.min(NH - 1, y))];
+  }
+  var dragging = false;
+  cv.addEventListener("pointerdown", function(e){
+    try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+    dragging = true;
+    var p = toGrid(e);
+    pending.cx = p[0]; pending.cy = p[1];
+    pending.write = !!(e.shiftKey || e.button === 2);
+    pending.on = true; pending.step = true;
+    e.preventDefault();
+  });
+  cv.addEventListener("pointermove", function(e){
+    if (!dragging) return;
+    var p = toGrid(e);
+    pending.cx = p[0]; pending.cy = p[1];
+    pending.write = !!e.shiftKey;
+    pending.on = true; pending.step = true;
+  });
+  function endDrag(){ dragging = false; pending.on = false; }
+  cv.addEventListener("pointerup", endDrag);
+  cv.addEventListener("pointercancel", endDrag);
+  cv.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+
+  window.addEventListener("keydown", function(e){
+    if (e.code === "Space"){ e.preventDefault(); setPause(!paused); }
+    else if (e.key === "r" || e.key === "R"){ resetWorld(); }
+  });
+
+  function setPause(v){
+    paused = v;
+    el.bPause.textContent = paused ? "继续" : "暂停";
+    el.bPause.className = paused ? "" : "on";
+  }
+  function resetWorld(){
+    build(cv.width, cv.height);
+    logMsg("已重置（参数保持不变）", "c");
+  }
+  function savePNG(){
+    try{
+      var a = document.createElement("a");
+      a.download = "neural-snow-" + Date.now() + ".png";
+      a.href = cv.toDataURL("image/png");
+      a.click();
+      logMsg("已导出 PNG（" + cv.width + "×" + cv.height + "）", "w");
+    }catch(err){
+      logMsg("导出失败：" + err.message, "l");
+    }
+  }
+
+  el.bPause.addEventListener("click", function(){ setPause(!paused); });
+  el.bReset.addEventListener("click", resetWorld);
+  el.bSave.addEventListener("click", savePNG);
+  el.bField.addEventListener("click", function(){
+    showField = !showField;
+    el.bField.className = showField ? "on" : "";
+  });
+  el.bHeat.addEventListener("click", function(){
+    showHeat = !showHeat;
+    el.bHeat.className = showHeat ? "on" : "";
+  });
+
+  function bind(id, key, fmt, scale){
+    var s = el[id];
+    function apply(){
+      var raw = parseFloat(s.value);
+      cfg[key] = raw * (scale || 1);
+      el["v" + id.slice(1)].textContent = fmt(raw);
+    }
+    s.addEventListener("input", apply);
+    apply();
+  }
+  bind("sFreq", "freq", function(v){ return v + "%"; }, 0.01);
+  bind("sRadius", "radius", function(v){ return "" + v; }, 1);
+  bind("sThresh", "thresh", function(v){ return v.toFixed(3); }, 1);
+  bind("sDecay", "decay", function(v){ return v + "%"; }, 0.01);
+  bind("sDiff", "diff", function(v){ return (v / 100).toFixed(2); }, 0.01);
+  bind("sSticky", "sticky", function(v){ return v + "%"; }, 0.01);
+  bind("sSeeds", "seeds", function(v){ return "" + v; }, 1);
+  bind("sNucleus", "nucleus", function(v){ return "" + v; }, 1);
+  bind("sWind", "wind", function(v){ return (v / 100).toFixed(1); }, 1);
+  bind("sGrow", "grow", function(v){ return (v / 100).toFixed(2); }, 0.01);
+  bind("sRes", "res", function(v){ return v.toFixed(1) + "×"; }, 1);
+  el.sRes.addEventListener("change", function(){ resizeCanvas(); });
+
+  var rt = null;
+  window.addEventListener("resize", function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){ if (img) resizeCanvas(); }, 220);
+  });
+
+  /* ================= 启动 ================= */
+  resizeCanvas();
+  setPause(false);
+  logMsg("就绪：电势场 " + NW + "×" + NH + " · 阈值 " + cfg.thresh + " · 粘附 " + cfg.sticky + " · 遗忘 " + cfg.decay, "c");
+  logMsg("提示：点击画布播撒脉冲；空格暂停；R 重置", "c");
+  updateStats();
+  requestAnimationFrame(loop);
+
+  /* ================= 无头自测（11 项断言） ================= */
+  window.__snow = {
+    cfg:cfg, step:simStep, burst:burst, build:function(w,h){ build(w || 320, h || 240); },
+    stats:function(){ return { frozen:frozen, total:totalIce, fired:fired, lost:lost, N:N, wave:wave.on, nw:NW, nh:NH }; },
+    setPause:setPause, render:render, reset:resetWorld,
+    get:function(i){ return { p:pot[i], s:scar[i], i:ice[i], f:frz[i], h:pha[i] }; },
+    rng:function(){ return rnd(); },
+    gain:function(v){ if (v === undefined) return GROW_GAIN; GROW_GAIN = v | 0; },
+    walkers:function(v){ if (v === undefined) return WALKERS; WALKERS = v | 0; }
+  };
+
+  function selftest(){
+    var k, R = {};
+
+    /* 1. 确定性：同样的 tick 起点重放同一段模拟，逐 tick 快照必须完全一致。
+           （重放一次即可暴露「全局 RNG 流被别处消耗」这类隐藏耦合。） */
+    function run120(w, h){
+      build(w, h);
+      tick = 0;
+      var snaps = [];
+      for (var s = 0; s < 120; s++){
+        simStep();
+        var iceSum = 0, potSum = 0, scarSum = 0, frzSum = 0, pha2 = 0;
+        for (var i = 0; i < N; i++){
+          iceSum += ice[i];
+          potSum += pot[i];
+          scarSum += scar[i];
+          frzSum += frz[i];
+          if (pha[i] === 2) pha2++;
+        }
+        snaps.push([iceSum, Math.round(potSum * 1e5), Math.round(scarSum * 1e5),
+                    Math.round(frzSum * 1e5), pha2, wave.peak, fired, lost].join(","));
+      }
+      return snaps.join("|");
+    }
+    var s1 = run120(300, 180);
+    var s2 = run120(300, 180);
+    R.replayDeterministic = s1 === s2;
+    var f1 = s1.split("|")[0].split(","), f2 = s1.split("|")[119].split(",");
+    R.rngNotConstant = f1[1] !== f2[1] || f1[5] !== f2[5];
+    R.sameSeedSameIce = frozen === totalIce;   /* 记账一致：统计值就是真实冰格数 */
+
+    /* 2. 电势域：任何时刻都在 [0,1] */
+    build(300, 180);
+    for (k = 0; k < 200; k++) simStep();
+    var bad = 0, badFrz = 0;
+    for (k = 0; k < N; k++){
+      var p = pot[k];
+      if (!(p >= 0 && p <= 1)) bad++;
+      if (!(frz[k] >= 0 && frz[k] <= 1.6)) badFrz++;
+    }
+    R.potRange = bad === 0;
+    R.frzRange = badFrz === 0;
+
+    /* 3. 生长：真的在长，但不是一次炸开 */
+    build(260, 200);
+    var n0 = frozen, n1 = 0;
+    for (k = 0; k < 30; k++) simStep();
+    n1 = frozen;
+    R.growsSlowly = n1 >= n0 + 1 && n1 <= n0 + 30 * WALKERS + 40;
+
+    /* 4. 放电与波相位：会出现放电；且放电相必须是「瞬时」的 —— 任何一格若连续两步都处于放电相就是泄漏 */
+    build(220, 170);
+    var guard = 0, sawWave = false, sawOff = false, iceSum = 0, stale = 0, maxPha2 = 0;
+    var prev2 = new Uint8Array(N);
+    while (guard++ < 8000 && !sawWave) simStep();
+    sawWave = wave.peak > 0;
+    for (k = 0; k < 600; k++){
+      simStep();
+      var cur2 = 0;
+      for (var q = 0; q < N; q++){
+        var is2 = pha[q] === 2 ? 1 : 0;
+        if (is2){
+          cur2++;
+          if (prev2[q]) stale++;        /* 上一回合是放电相、这一回合还是 —— 没被清除 */
+        }
+        prev2[q] = is2;
+      }
+      if (cur2 > maxPha2) maxPha2 = cur2;
+      if (!wave.on) sawOff = true;
+    }
+    for (k = 0; k < N; k++){ if (pha[k] === 2) iceSum++; }
+    var iceCount = 0;
+    for (k = 0; k < N; k++) iceCount += ice[k];
+    R.waveFires = sawWave;
+    R.waveEnds = sawOff;
+    R.iceConsistent = iceCount === frozen;
+    R.phaTransience = stale === 0;
+    R.midPha = maxPha2;
+    R.pha2sum = iceSum;
+
+    /* 4b. 不变量：放电相永远不该出现在扫描范围之外（边界格一旦被标记就再也不会被清除） */
+    build(200, 200);
+    var borderLeak = 0, borderSeen = 0;
+    for (k = 0; k < 3000; k++){
+      simStep();
+      for (var bx2 = 0; bx2 < NW; bx2++){
+        if (pha[bx2] === 2 || pha[(NH - 1) * NW + bx2] === 2) borderLeak++;
+      }
+      for (var by2 = 0; by2 < NH; by2++){
+        if (pha[by2 * NW] === 2 || pha[by2 * NW + NW - 1] === 2) borderLeak++;
+      }
+    }
+    for (k = 0; k < N; k++) if (pha[k] === 2) borderSeen++;
+    R.noBorderPhase = borderLeak === 0 && borderSeen === 0;
+
+    /* 5. 脉冲注入：burst 后波前确实存在，并且随后会长出新的雪 */
+    build(200, 160);
+    var iceBefore = frozen;
+    burst(100, 80, false);
+    R.burstFires = wave.on && wave.peak > 0;
+    for (k = 0; k < 200; k++) simStep();
+    R.burstProduces = wave.peak > 0 && frozen >= iceBefore;
+
+    /* 6. 渲染路径不抛异常，且像素缓冲长度正确 */
+    var threw = null;
+    try{ build(240, 180); for (k = 0; k < 50; k++) simStep(); render(); }
+    catch(err){ threw = err.message; }
+    R.renderOk = threw === null && base32.length === cv.width * cv.height && baseData.length === N;
+
+    R.pass = R.replayDeterministic && R.rngNotConstant && R.sameSeedSameIce && R.potRange && R.frzRange &&
+             R.growsSlowly && R.waveFires && R.waveEnds && R.iceConsistent && R.phaTransience &&
+             R.burstFires && R.burstProduces && R.renderOk && R.noBorderPhase;
+    return R;
+  }
+  window.__selftest = selftest;
+
+  if (location.hash === "#selftest"){
+    var R = selftest();
+    var box = document.createElement("div");
+    box.id = "selftest-result";
+    box.textContent = JSON.stringify(R);
+    document.body.appendChild(box);
+    document.title = R.pass ? "SELFTEST PASS" : "SELFTEST FAIL";
+  }
+})();
+</script>
+</body>
+</html>

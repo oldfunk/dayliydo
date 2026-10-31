@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>反应扩散 · 图灵斑图</title>
+<style>
+:root{--bg:#0b0f14;--panel:#141a22;--border:#222a35;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--accent2:#3fb950}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:16px;font-weight:600}
+header .sub{color:var(--muted);font-size:12px}
+main{flex:1;display:flex;min-height:0}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden}
+canvas{image-rendering:pixelated;max-width:100%;max-height:100%;cursor:crosshair}
+aside{width:320px;border-left:1px solid var(--border);background:var(--panel);padding:14px;overflow:auto;font-size:13px}
+aside h2{margin:14px 0 6px;font-size:13px;color:var(--muted);text-transform:none;letter-spacing:0}
+.ctrl{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.ctrl label{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+.ctrl input[type=range]{width:100%}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+button{background:#1f2630;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#0b0f14;border-color:var(--accent)}
+button.danger{background:#da3633;color:#fff;border-color:#da3633}
+.preset{flex:1 1 45%}
+.stat{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);line-height:1.6}
+.hint{color:var(--muted);font-size:11px;line-height:1.5;margin-top:8px}
+@media (max-width:720px){aside{width:100%;border-left:none;border-top:1px solid var(--border);height:42vh}}
+</style>
+</head>
+<body>
+<header>
+  <h1>反应扩散 · 图灵斑图</h1>
+  <span class="sub">Gray-Scott 模型：两种化学物质在网格上扩散+反应，斑点/条纹/迷宫从局部规则涌现</span>
+</header>
+<main>
+  <div class="canvas-wrap"><canvas id="c"></canvas></div>
+  <aside>
+    <div class="row">
+      <button id="btnPlay" class="primary">暂停</button>
+      <button id="btnReset">重置种子</button>
+      <button id="btnClear">清空</button>
+      <button id="btnRandom">随机种子</button>
+    </div>
+    <h2>参数</h2>
+    <div class="ctrl"><label>feed f <span id="vf"></span></label><input id="f" type="range" min="0.01" max="0.08" step="0.001" value="0.037"></div>
+    <div class="ctrl"><label>kill k <span id="vk"></span></label><input id="k" type="range" min="0.04" max="0.08" step="0.001" value="0.060"></div>
+    <div class="ctrl"><label>Du <span id="vdu"></span></label><input id="du" type="range" min="0.05" max="0.30" step="0.01" value="0.16"></div>
+    <div class="ctrl"><label>Dv <span id="vdv"></span></label><input id="dv" type="range" min="0.02" max="0.12" step="0.01" value="0.08"></div>
+    <div class="ctrl"><label>步/帧 <span id="vs"></span></label><input id="steps" type="range" min="1" max="40" step="1" value="8"></div>
+    <div class="ctrl"><label>画笔 <span id="vb"></span></label><input id="brush" type="range" min="1" max="12" step="1" value="4"></div>
+    <h2>预设</h2>
+    <div class="row">
+      <button class="preset" data-p="spots">斑点</button>
+      <button class="preset" data-p="stripes">条纹</button>
+      <button class="preset" data-p="maze">迷宫</button>
+      <button class="preset" data-p="holes">孔洞</button>
+      <button class="preset" data-p="coral">珊瑚</button>
+      <button class="preset" data-p="chaos">混沌</button>
+    </div>
+    <h2>状态</h2>
+    <div class="stat" id="stat"></div>
+    <div class="hint">拖动鼠标在画布上涂 V 化学物质（种子）。f 控制喂入 A，k 控制移除 B；不同 (f,k) 组合涌现不同图案。图像为 V 浓度场。</div>
+  </aside>
+</main>
+<script>
+(function(){
+  const GRID=200;
+  const SCALE=3;
+  const canvas=document.getElementById('c');
+  canvas.width=GRID*SCALE; canvas.height=GRID*SCALE;
+  const ctx=canvas.getContext('2d');
+  const N=GRID;
+  let U=new Float32Array(N*N), V=new Float32Array(N*N);
+  let U2=new Float32Array(N*N), V2=new Float32Array(N*N);
+  let running=true;
+  let stepsPerFrame=8;
+  let brush=4;
+  const img=ctx.createImageData(canvas.width,canvas.height);
+
+  function idx(x,y){ if(x<0)x=0; if(y<0)y=0; if(x>=N)x=N-1; if(y>=N)y=N-1; return y*N+x; }
+
+  function reset(){
+    for(let i=0;i<N*N;i++){ U[i]=1; V[i]=0; U2[i]=1; V2[i]=0; }
+    // seed center block
+    seedRect(Math.floor(N/2)-8,Math.floor(N/2)-8,16,16);
+  }
+  function seedRect(x0,y0,w,h){
+    for(let y=y0;y<y0+h;y++) for(let x=x0;x<x0+w;x++){
+      if(x<0||y<0||x>=N||y>=N) continue;
+      const i=y*N+x; V[i]=1; U[i]=0;
+    }
+  }
+  function randomSeeds(n){
+    for(let t=0;t<n;t++){
+      const x=Math.floor(Math.random()*N), y=Math.floor(Math.random()*N);
+      const r=3+Math.floor(Math.random()*4);
+      for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){
+        if(dx*dx+dy*dy>r*r) continue;
+        const xx=x+dx, yy=y+dy; if(xx<0||yy<0||xx>=N||yy>=N) continue;
+        const i=yy*N+xx; V[i]=1; U[i]=0;
+      }
+    }
+  }
+  function clear(){ for(let i=0;i<N*N;i++){ U[i]=1; V[i]=0; } }
+
+  function step(){
+    const f=+document.getElementById('f').value;
+    const k=+document.getElementById('k').value;
+    const Du=+document.getElementById('du').value;
+    const Dv=+document.getElementById('dv').value;
+    const dt=1;
+    for(let y=0;y<N;y++){
+      for(let x=0;x<N;x++){
+        const i=y*N+x;
+        const u=U[i], v=V[i];
+        // laplacian
+        const ul=U[idx(x-1,y)], ur=U[idx(x+1,y)], uu=U[idx(x,y-1)], ud=U[idx(x,y+1)];
+        const vl=V[idx(x-1,y)], vr=V[idx(x+1,y)], vu=V[idx(x,y-1)], vd=V[idx(x,y+1)];
+        const lu=ul+ur+uu+ud-4*u;
+        const lv=vl+vr+vu+vd-4*v;
+        const uvv=u*v*v;
+        U2[i]=u + dt*(Du*lu - uvv + f*(1-u));
+        V2[i]=v + dt*(Dv*lv + uvv - (f+k)*v);
+        // clamp
+        if(U2[i]<0)U2[i]=0; if(U2[i]>1)U2[i]=1;
+        if(V2[i]<0)V2[i]=0; if(V2[i]>1)V2[i]=1;
+      }
+    }
+    const tmpU=U,Utmp=U2; U=Utmp; U2=tmpU;
+    const tmpV=V,Vtmp=V2; V=Vtmp; V2=tmpV;
+  }
+
+  function render(){
+    // scale up with nearest neighbor via ImageData at canvas size
+    for(let y=0;y<N;y++){
+      for(let x=0;x<N;x++){
+        const v=V[y*N+x];
+        // color: navy -> cyan -> white
+        let r,g,b;
+        if(v<0.5){
+          const t=v*2;
+          r=Math.round(8 + t*0);
+          g=Math.round(12 + t*180);
+          b=Math.round(40 + t*200);
+        } else {
+          const t=(v-0.5)*2;
+          r=Math.round(0 + t*255);
+          g=Math.round(192 + t*63);
+          b=Math.round(240 + t*15);
+        }
+        for(let sy=0;sy<SCALE;sy++) for(let sx=0;sx<SCALE;sx++){
+          const p=((y*SCALE+sy)*canvas.width + (x*SCALE+sx))*4;
+          img.data[p]=r; img.data[p+1]=g; img.data[p+2]=b; img.data[p+3]=255;
+        }
+      }
+    }
+    ctx.putImageData(img,0,0);
+  }
+
+  let painting=false;
+  function paintAt(cx,cy){
+    const rect=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
+    const px=(cx-rect.left)*scaleX, py=(cy-rect.top)*scaleY;
+    const gx=Math.floor(px/SCALE), gy=Math.floor(py/SCALE);
+    const r=brush;
+    for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){
+      if(dx*dx+dy*dy>r*r) continue;
+      const x=gx+dx, y=gy+dy; if(x<0||y<0||x>=N||y>=N) continue;
+      const i=y*N+x; V[i]=Math.min(1,V[i]+0.6); U[i]=Math.max(0,U[i]-0.6);
+    }
+  }
+  canvas.addEventListener('mousedown',e=>{painting=true;paintAt(e.clientX,e.clientY);});
+  canvas.addEventListener('mousemove',e=>{if(painting)paintAt(e.clientX,e.clientY);});
+  window.addEventListener('mouseup',()=>painting=false);
+  canvas.addEventListener('touchstart',e=>{painting=true;paintAt(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();},{passive:false});
+  canvas.addEventListener('touchmove',e=>{if(painting)paintAt(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();},{passive:false});
+  window.addEventListener('touchend',()=>painting=false);
+
+  // controls wiring
+  function bind(id,outId){
+    const el=document.getElementById(id);
+    const out=document.getElementById(outId);
+    const upd=()=>{ out.textContent=parseFloat(el.value).toFixed(el.step && el.step.includes('.')?3:0); };
+    el.addEventListener('input',upd); upd();
+    if(id==='steps') el.addEventListener('input',()=>{stepsPerFrame=+el.value;});
+    if(id==='brush') el.addEventListener('input',()=>{brush=+el.value;});
+  }
+  bind('f','vf'); bind('k','vk'); bind('du','vdu'); bind('dv','vdv'); bind('steps','vs'); bind('brush','vb');
+  document.getElementById('steps').addEventListener('input',e=>{stepsPerFrame=+e.target.value;});
+  document.getElementById('brush').addEventListener('input',e=>{brush=+e.target.value;});
+
+  document.getElementById('btnPlay').addEventListener('click',function(){
+    running=!running; this.textContent=running?'暂停':'继续';
+  });
+  document.getElementById('btnReset').addEventListener('click',()=>{reset();});
+  document.getElementById('btnClear').addEventListener('click',()=>{clear();});
+  document.getElementById('btnRandom').addEventListener('click',()=>{clear(); randomSeeds(12);});
+
+  const presets={
+    spots:{f:0.037,k:0.060},
+    stripes:{f:0.030,k:0.058},
+    maze:{f:0.029,k:0.057},
+    holes:{f:0.039,k:0.058},
+    coral:{f:0.058,k:0.065},
+    chaos:{f:0.020,k:0.050}
+  };
+  document.querySelectorAll('.preset').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const p=presets[b.dataset.p];
+      document.getElementById('f').value=p.f; document.getElementById('k').value=p.k;
+      document.getElementById('vf').textContent=p.f.toFixed(3);
+      document.getElementById('vk').textContent=p.k.toFixed(3);
+      clear(); randomSeeds(8);
+    });
+  });
+
+  let frames=0, t0=performance.now();
+  function loop(){
+    if(running){
+      for(let s=0;s<stepsPerFrame;s++) step();
+    }
+    render();
+    frames++;
+    const now=performance.now();
+    if(now-t0>500){
+      const fps=(frames/( (now-t0)/1000)).toFixed(1);
+      document.getElementById('stat').textContent='网格 '+N+'x'+N+'\n步/帧 '+stepsPerFrame+'\nf='+parseFloat(document.getElementById('f').value).toFixed(3)+'  k='+parseFloat(document.getElementById('k').value).toFixed(3)+'\nDu='+parseFloat(document.getElementById('du').value).toFixed(2)+'  Dv='+parseFloat(document.getElementById('dv').value).toFixed(2)+'\nFPS '+fps;
+      frames=0; t0=now;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  reset();
+  randomSeeds(6);
+  loop();
+})();
+</script>
+</body>
+</html>

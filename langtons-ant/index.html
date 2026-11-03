@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Langton 蚂蚁 · 规则涌现</title>
+<style>
+:root{--bg:#0b0f14;--panel:#141a22;--border:#222a35;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--accent2:#3fb950;--danger:#da3633}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:16px;font-weight:600}
+header .sub{color:var(--muted);font-size:12px}
+main{flex:1;display:flex;min-height:0}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden}
+canvas{image-rendering:pixelated;max-width:100%;max-height:100%}
+aside{width:340px;border-left:1px solid var(--border);background:var(--panel);padding:14px;overflow:auto;font-size:13px}
+aside h2{margin:14px 0 6px;font-size:13px;color:var(--muted);font-weight:600}
+.ctrl{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.ctrl label{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+.ctrl input[type=range]{width:100%}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+button{background:#1f2630;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#0b0f14;border-color:var(--accent)}
+button.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.preset{flex:1 1 45%}
+.stat{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);line-height:1.6;white-space:pre-wrap}
+.hint{color:var(--muted);font-size:11px;line-height:1.5;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:4px 6px;border:1px solid var(--border);text-align:center}
+th{color:var(--muted);font-weight:500}
+td input,td select{background:#0b0f14;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px;width:100%}
+.swatch{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;border:1px solid var(--border)}
+.code{font-family:ui-monospace,monospace;font-size:12px;background:#0b0f14;padding:6px 8px;border-radius:6px;border:1px solid var(--border);word-break:break-all}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#1f2630;border:1px solid var(--border)}
+.badge.ok{background:#1f3a2a;border-color:var(--accent2);color:var(--accent2)}
+@media (max-width:760px){aside{width:100%;border-left:none;border-top:1px solid var(--border);height:46vh}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Langton 蚂蚁 · 规则涌现</h1>
+  <span class="sub">蚂蚁读格子颜色 → 转向 + 重涂； highway 从两条规则里自己长出来。规则表可编辑，看涌现如何随规则改变。</span>
+</header>
+<main>
+  <div class="canvas-wrap"><canvas id="c"></canvas></div>
+  <aside>
+    <div class="row">
+      <button id="btnPlay" class="primary">暂停</button>
+      <button id="btnStep">单步</button>
+      <button id="btnReset">重置</button>
+      <button id="btnRandom">随机种子</button>
+    </div>
+    <h2>统计</h2>
+    <div class="stat" id="stat">-</div>
+    <h2> highway 检测</h2>
+    <div id="hw" class="badge">未检测到</div>
+    <h2>参数</h2>
+    <div class="ctrl"><label>步/帧 <span id="vs"></span></label><input id="steps" type="range" min="1" max="20000" step="100" value="2000"></div>
+    <div class="ctrl"><label>网格 <span id="vg"></span></label><select id="grid">
+      <option value="128">128×128</option>
+      <option value="200" selected>200×200</option>
+      <option value="300">300×300</option>
+    </select></div>
+    <div class="ctrl"><label>边界</label><select id="wrap">
+      <option value="1" selected>环面（环绕）</option>
+      <option value="0">撞墙停止</option>
+    </select></div>
+    <div class="ctrl"><label>颜色数 <span id="vc"></span></label><input id="colors" type="range" min="2" max="8" step="1" value="2"></div>
+    <h2>预设规则</h2>
+    <div class="row" id="presets"></div>
+    <h2>规则表（颜色 → 转向, 新颜色）</h2>
+    <table id="ruleTable"><thead><tr><th>颜色</th><th>转向</th><th>新颜色</th></tr></thead><tbody></tbody></table>
+    <div class="row" style="margin-top:6px">
+      <button id="btnAddColor">+ 颜色</button>
+      <button id="btnRemoveColor">- 颜色</button>
+      <button id="btnRandomRule">随机规则</button>
+    </div>
+    <h2>规则编码</h2>
+    <div class="code" id="code">-</div>
+    <div class="row" style="margin-top:6px">
+      <button id="btnCopyCode">复制编码</button>
+      <button id="btnApplyCode">应用编码</button>
+      <input id="codeIn" type="text" placeholder="粘贴编码" style="flex:1;min-width:80px">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnExport">导出 PNG</button>
+      <button id="btnClear">清空网格</button>
+    </div>
+    <p class="hint">转向：L=左转 R=右转 S=直行 U=掉头。经典 highway 规则 = 颜色0: R→1，颜色1: L→0（编码 "R1L0"）。改变规则表，图案会截然不同。</p>
+  </aside>
+</main>
+<script>
+(function(){
+  'use strict';
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  let W = 200, H = 200;
+  let grid = null; // Uint8Array
+  let Nc = 2; // number of colors
+  // rules: array of {turn: 0=L,1=R,2=S,3=U, newColor}
+  let rules = [];
+  let antX=0, antY=0, antDir=0; // 0 up,1 right,2 down,3 left
+  const DX=[0,1,0,-1], DY=[-1,0,1,0];
+  let stepsPerFrame = 2000;
+  let running = true;
+  let totalSteps = 0;
+  let wrap = true;
+  let paused = false;
+
+  // turn history for highway detection
+  let turnHist = [];
+  const TURNHIST_MAX = 80;
+
+  const PRESETS = [
+    {name:'经典 Highway', code:'R1L0'},
+    {name:'方块螺旋', code:'R1R2L3L0'},
+    {name:'三角迷宫', code:'R1L2R3L0'},
+    {name:'混沌团', code:'R1R2R3L0'},
+    {name:'条纹道', code:'L1R0'},
+  ];
+
+  function palette(n){
+    const out = [];
+    for(let i=0;i<n;i++){
+      const h = Math.round(360*i/n);
+      // color for cell value i
+      if(i===0) out.push([12,16,22]); // background dark
+      else {
+        const s = 70, l = 55;
+        // hsl to rgb
+        const c = (1 - Math.abs(2*l/100 -1))*s/100;
+        const x = c*(1 - Math.abs((h/60)%2 -1));
+        const m = l/100 - c/2;
+        let r=0,g=0,b=0;
+        if(h<60){r=c;g=x;}
+        else if(h<120){r=x;g=c;}
+        else if(h<180){g=c;b=x;}
+        else if(h<240){g=x;b=c;}
+        else if(h<300){r=x;b=c;}
+        else {r=c;b=x;}
+        out.push([Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)]);
+      }
+    }
+    return out;
+  }
+  let pal = palette(Nc);
+
+  function codeOf(rules){
+    return rules.map(r=> (r.turn===0?'L':r.turn===1?'R':r.turn===2?'S':'U') + r.newColor).join('');
+  }
+  function parseCode(code){
+    // each token: letter + digits
+    const toks = code.match(/[LRUS]\d+/g);
+    if(!toks) return null;
+    const r = [];
+    for(const t of toks){
+      const turn = t[0]==='L'?0:t[0]==='R'?1:t[0]==='S'?2:3;
+      const nc = parseInt(t.slice(1),10);
+      r.push({turn:turn, newColor:nc});
+    }
+    return r;
+  }
+
+  function resizeCanvas(){
+    canvas.width = W; canvas.height = H;
+    // display size handled by CSS max
+  }
+
+  function resetGrid(){
+    grid = new Uint8Array(W*H);
+    // ant at center
+    antX = Math.floor(W/2); antY = Math.floor(H/2); antDir = 0;
+    totalSteps = 0;
+    turnHist = [];
+    renderFull();
+    updateStat();
+  }
+
+  function renderFull(){
+    const img = ctx.createImageData(W,H);
+    const d = img.data;
+    for(let i=0;i<W*H;i++){
+      const c = grid[i];
+      const col = pal[c] || [0,0,0];
+      d[i*4]=col[0]; d[i*4+1]=col[1]; d[i*4+2]=col[2]; d[i*4+3]=255;
+    }
+    // draw ant
+    const ai = antY*W+antX;
+    // highlight ant cell with a marker color (invert-ish)
+    d[ai*4]=255; d[ai*4+1]=220; d[ai*4+2]=80; d[ai*4+3]=255;
+    ctx.putImageData(img,0,0);
+  }
+
+  // efficient: only redraw ant + changed cell each step? We batch; just rebuild per frame is fine for 200x200
+  function stepOnce(){
+    if(grid===null) return false;
+    const i = antY*W + antX;
+    const c = grid[i];
+    const rule = rules[c % rules.length] || rules[0];
+    grid[i] = rule.newColor % Nc;
+    // turn
+    if(rule.turn===0) antDir = (antDir+3)%4;
+    else if(rule.turn===1) antDir = (antDir+1)%4;
+    else if(rule.turn===3) antDir = (antDir+2)%4;
+    // S: no change
+    turnHist.push(rule.turn);
+    if(turnHist.length>TURNHIST_MAX) turnHist.shift();
+    // move
+    antX += DX[antDir];
+    antY += DY[antDir];
+    if(wrap){
+      antX = ((antX%W)+W)%W;
+      antY = ((antY%H)+H)%H;
+    } else {
+      if(antX<0||antX>=W||antY<0||antY>=H){
+        // stop
+        running=false;
+        document.getElementById('btnPlay').textContent='开始';
+        return false;
+      }
+    }
+    totalSteps++;
+    return true;
+  }
+
+  function stepBatch(n){
+    for(let k=0;k<n;k++){
+      if(!stepOnce()) break;
+    }
+  }
+
+  function detectHighway(){
+    if(turnHist.length < 40) return false;
+    // check repeating pattern of period 2 or 4 in last turns
+    const L = turnHist.length;
+    for(const period of [2,4]){
+      let ok = true;
+      for(let i=L-period*4; i<L; i++){
+        if(turnHist[i] !== turnHist[i-period]){ ok=false; break; }
+      }
+      if(ok) return true;
+    }
+    return false;
+  }
+
+  function updateStat(){
+    document.getElementById('stat').textContent =
+      '步数: '+totalSteps.toLocaleString()+'\n'+
+      '位置: ('+antX+','+antY+') 方向: '+['上','右','下','左'][antDir]+'\n'+
+      '网格: '+W+'×'+H+'  颜色: '+Nc+'\n'+
+      '规则: '+codeOf(rules);
+    const hw = document.getElementById('hw');
+    if(detectHighway()){ hw.textContent=' highway 检测到（周期运动）'; hw.className='badge ok'; }
+    else { hw.textContent='未检测到'; hw.className='badge'; }
+  }
+
+  function rebuildRuleTable(){
+    const tbody = document.querySelector('#ruleTable tbody');
+    while(tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    for(let c=0;c<Nc;c++){
+      const r = rules[c] || {turn:0,newColor:0};
+      const tr = document.createElement('tr');
+      // color swatch
+      const td0 = document.createElement('td');
+      const sp = document.createElement('span'); sp.className='swatch';
+      const col = pal[c]||[0,0,0];
+      sp.style.background = 'rgb('+col[0]+','+col[1]+','+col[2]+')';
+      td0.appendChild(sp);
+      td0.appendChild(document.createTextNode(' '+c));
+      tr.appendChild(td0);
+      // turn select
+      const td1 = document.createElement('td');
+      const sel = document.createElement('select');
+      ['L','R','S','U'].forEach((lbl,idx)=>{
+        const o = document.createElement('option'); o.value=idx; o.textContent=lbl; if(idx===r.turn) o.selected=true; sel.appendChild(o);
+      });
+      sel.addEventListener('change',()=>{ rules[c].turn=parseInt(sel.value,10); syncCode(); updateStat(); });
+      td1.appendChild(sel); tr.appendChild(td1);
+      // new color input
+      const td2 = document.createElement('td');
+      const inp = document.createElement('input'); inp.type='number'; inp.min=0; inp.max=Nc-1; inp.value=r.newColor;
+      inp.addEventListener('change',()=>{ let v=parseInt(inp.value,10); if(isNaN(v)) v=0; v=((v%Nc)+Nc)%Nc; inp.value=v; rules[c].newColor=v; syncCode(); updateStat(); });
+      td2.appendChild(inp); tr.appendChild(td2);
+      tbody.appendChild(tr);
+    }
+    syncCode();
+  }
+
+  function syncCode(){
+    document.getElementById('code').textContent = codeOf(rules);
+  }
+
+  function applyColors(n){
+    Nc = n;
+    pal = palette(Nc);
+    // resize rules
+    while(rules.length < Nc) rules.push({turn: (rules.length%2===0?1:0), newColor: (rules.length+1)%Nc});
+    if(rules.length > Nc) rules = rules.slice(0,Nc);
+    // clamp newColor
+    rules.forEach(r=>{ r.newColor = r.newColor % Nc; });
+    rebuildRuleTable();
+    resetGrid();
+  }
+
+  function applyCode(code){
+    const r = parseCode(code);
+    if(!r || r.length===0) return false;
+    // set colors to r.length
+    document.getElementById('colors').value = r.length;
+    Nc = r.length;
+    pal = palette(Nc);
+    rules = r.map(x=>({turn:x.turn, newColor: x.newColor % Nc}));
+    document.getElementById('vc').textContent = Nc;
+    rebuildRuleTable();
+    resetGrid();
+    return true;
+  }
+
+  function randomRule(){
+    const n = Nc;
+    rules = [];
+    for(let c=0;c<n;c++){
+      rules.push({turn: Math.floor(Math.random()*4), newColor: Math.floor(Math.random()*n)});
+    }
+    rebuildRuleTable();
+    resetGrid();
+  }
+
+  function randomSeed(){
+    grid = new Uint8Array(W*H);
+    for(let i=0;i<grid.length;i++) grid[i] = Math.random() < 0.02 ? 1 : 0;
+    antX = Math.floor(W/2); antY = Math.floor(H/2); antDir = 0;
+    totalSteps = 0; turnHist=[];
+    renderFull(); updateStat();
+  }
+
+  function exportPNG(){
+    // redraw without ant marker? keep as is
+    const link = document.createElement('a');
+    link.download = 'langtons-ant.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  // init presets buttons
+  const presetsDiv = document.getElementById('presets');
+  PRESETS.forEach(p=>{
+    const b = document.createElement('button'); b.className='preset'; b.textContent=p.name;
+    b.addEventListener('click',()=>{ applyCode(p.code); });
+    presetsDiv.appendChild(b);
+  });
+
+  // event wiring
+  document.getElementById('btnPlay').addEventListener('click', function(){
+    running = !running;
+    this.textContent = running ? '暂停' : '开始';
+  });
+  document.getElementById('btnStep').addEventListener('click', ()=>{ stepBatch(1); renderFull(); updateStat(); });
+  document.getElementById('btnReset').addEventListener('click', resetGrid);
+  document.getElementById('btnRandom').addEventListener('click', randomSeed);
+  document.getElementById('btnClear').addEventListener('click', ()=>{ grid = new Uint8Array(W*H); antX=Math.floor(W/2);antY=Math.floor(H/2);antDir=0;totalSteps=0;turnHist=[];renderFull();updateStat(); });
+  document.getElementById('btnAddColor').addEventListener('click', ()=>{
+    if(Nc>=8) return;
+    document.getElementById('colors').value = Nc+1;
+    applyColors(Nc+1);
+  });
+  document.getElementById('btnRemoveColor').addEventListener('click', ()=>{
+    if(Nc<=2) return;
+    document.getElementById('colors').value = Nc-1;
+    applyColors(Nc-1);
+  });
+  document.getElementById('btnRandomRule').addEventListener('click', randomRule);
+  document.getElementById('btnCopyCode').addEventListener('click', ()=>{
+    const t = document.getElementById('code').textContent;
+    if(navigator.clipboard) navigator.clipboard.writeText(t);
+  });
+  document.getElementById('btnApplyCode').addEventListener('click', ()=>{
+    const v = document.getElementById('codeIn').value.trim();
+    if(v) applyCode(v);
+  });
+  document.getElementById('btnExport').addEventListener('click', exportPNG);
+
+  document.getElementById('steps').addEventListener('input', (e)=>{ stepsPerFrame=parseInt(e.target.value,10); document.getElementById('vs').textContent=stepsPerFrame; });
+  document.getElementById('grid').addEventListener('change', (e)=>{
+    W=H=parseInt(e.target.value,10);
+    document.getElementById('vg').textContent=W+'×'+H;
+    resetGrid();
+  });
+  document.getElementById('wrap').addEventListener('change', (e)=>{ wrap = e.target.value==='1'; });
+  document.getElementById('colors').addEventListener('input', (e)=>{ applyColors(parseInt(e.target.value,10)); });
+
+  // initial
+  stepsPerFrame = parseInt(document.getElementById('steps').value,10);
+  document.getElementById('vs').textContent = stepsPerFrame;
+  document.getElementById('vg').textContent = W+'×'+H;
+  document.getElementById('vc').textContent = Nc;
+  // default rules: classic RL
+  rules = [{turn:1,newColor:1},{turn:0,newColor:0}];
+  pal = palette(Nc);
+  resizeCanvas();
+  rebuildRuleTable();
+  resetGrid();
+
+  // main loop
+  function loop(){
+    if(running){
+      stepBatch(stepsPerFrame);
+      renderFull();
+      updateStat();
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

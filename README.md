@@ -32,6 +32,7 @@
 | 共振沙盘 | [resonance-sandbox](resonance-sandbox/) | 双板模态叠加 + 沙粒各向异性耗散：克拉德尼板可验证模拟，显示场与势能场共用一张网格 |
 | 神经雪 · 脉冲雪片 | [neural-snow](neural-snow/) | 扩散限制聚集（DLA）自己长雪晶：粒子从簇外随机游走碰到冰才粘，电势放电只当"天气" |
 | 反应扩散 · 图灵斑图 | [reaction-diffusion](reaction-diffusion/) | Gray-Scott 反应扩散：f/k 双参数相变，鼠标涂种子，斑点/条纹/迷宫从局部规则涌现 |
+| Langton 蚂蚁 · 规则涌现 | [langtons-ant](langtons-ant/) | Turmite 可编辑规则表，highway 自发涌现，规则编码可分享 |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

@@ -19,7 +19,7 @@ neural-snow（神经雪 · 脉冲雪片）—— 放电沙盘里自己长雪晶�
 视觉/交互实验系列延续。共同点：**图案不是被画出来的，而是从局部规则里长出来**——每个作品都是一个可亲手推演的 PDE/自动机/噪声场。
 计划 3 件作品：
 1. reaction-diffusion（反应扩散 · 图灵斑图）—— Gray-Scott 反应扩散，f/k 双参数相变，鼠标涂种子（已完成）
-2. （待定）元胞自动机 / Langton 蚂蚁变体
+2. langtons-ant（Langton 蚂蚁 · 规则涌现）—— Turmite 可编辑规则表，highway 自发涌现，规则编码可分享（已完成）
 3. （待定）噪声场流线 / Perlin curl noise 粒子轨迹
 
 联网调研来源：HN Show HN（HTML QR Codes 交互画布）、Project Echo 文本可视化。
@@ -60,6 +60,7 @@ neural-snow（神经雪 · 脉冲雪片）—— 放电沙盘里自己长雪晶�
 | 2026-10-18 | pixel-map-generator | 种子确定性 + 元胞自动机/距离场/递归回溯三种地形算法，导出 PNG/JSON |
 | 2026-10-21 | resonance-sandbox | 双板模态叠加 + 沙粒各向异性耗散：解析稳态解 + 显示场/势能场共用网格 + 能量收支闭式核对（克拉德尼板可验证模拟） |
 | 2026-10-25 | neural-snow | 扩散限制聚集（DLA）生长雪晶：粒子从簇外一圈随机游走碰到冰才粘 + 电势放电当"天气" + 疤痕淡去/窒息判定；电势不参与游走（否则必长成针或实心团） |
+| 2026-11-04 | langtons-ant | Langton 蚂蚁 Turmite：可编辑规则表（L/R/S/U + 新颜色），highway 自发涌现，规则编码可复制分享，highway 周期检测 |
 | 2026-11-01 | reaction-diffusion | Gray-Scott 反应扩散：f/k 双参数相变（斑点/条纹/迷宫/孔洞/珊瑚/混沌），鼠标涂种子，V 浓度场可视化 |
 
 ---

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>流线仪 · 噪声场寻路</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#131922; --border:#232c38;
+  --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --accent2:#3fb950;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:16px;font-weight:600}
+header .sub{color:var(--muted);font-size:12px}
+main{flex:1;display:flex;min-height:0}
+.canvas-wrap{flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
+canvas{display:block;max-width:100%;max-height:100%;cursor:crosshair}
+aside{width:330px;border-left:1px solid var(--border);background:var(--panel);padding:14px;overflow:auto;font-size:13px}
+aside h2{margin:14px 0 6px;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+.ctrl{display:flex;flex-direction:column;gap:5px;margin-bottom:9px}
+.ctrl label{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+.ctrl input[type=range]{width:100%}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+button{background:#1c2430;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#0b0f14;border-color:var(--accent);flex:1}
+.stat{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--muted);line-height:1.7;white-space:pre-wrap}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;background:#1c2430;border:1px solid var(--border)}
+.badge.ok{background:#17331f;border-color:var(--accent2);color:var(--accent2)}
+.hint{color:var(--muted);font-size:11px;line-height:1.6;margin-top:8px}
+.chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);margin:5px 0;cursor:pointer}
+.chk input{accent-color:var(--accent)}
+.sel{width:100%;background:#0b0f14;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-size:12px}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(20,26,34,.94);border:1px solid var(--accent2);color:var(--accent2);padding:5px 12px;border-radius:6px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .25s}
+@media (max-width:760px){
+  main{flex-direction:column}
+  aside{width:100%;border-left:none;border-top:1px solid var(--border);height:44vh}
+  header .sub{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>流线仪 · 噪声场寻路</h1>
+  <span class="sub">墨线不是被撒出去的，是被场推出去的：每颗粒子先查「着陆凭证」（散度），只准在汇聚区落笔；踩进发散区就被冲散。线自己长成水会走的形状。</span>
+</header>
+<main>
+  <div class="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div id="toast"></div>
+  </div>
+  <aside>
+    <div class="row">
+      <button id="btnPlay" class="primary">暂停</button>
+      <button id="btnClearInk">洗掉墨水</button>
+      <button id="btnReset">重新布场</button>
+    </div>
+
+    <h2>统计</h2>
+    <div class="stat" id="stat">-</div>
+
+    <h2>场</h2>
+    <div class="ctrl"><label>种子 <span id="vseed"></span></label><input id="seed" type="range" min="1" max="9999" step="1" value="20261108"></div>
+    <div class="ctrl"><label>噪声格数 <span id="vcells"></span></label><input id="cells" type="range" min="2" max="24" step="1" value="8"></div>
+    <div class="ctrl"><label>时间漂移 <span id="vdrift"></span></label><input id="drift" type="range" min="0" max="100" step="1" value="24"></div>
+    <label class="chk"><input type="checkbox" id="curl"> 旋度约束（无散场）</label>
+    <label class="chk"><input type="checkbox" id="showField"> 显示场线背景</label>
+
+    <h2>墨水</h2>
+    <div class="ctrl"><label>断墨阈值（源区散度） <span id="vthresh"></span></label><input id="thresh" type="range" min="0" max="400" step="5" value="150"></div>
+    <div class="ctrl"><label>步长 <span id="vstep"></span></label><input id="step" type="range" min="2" max="30" step="1" value="9"></div>
+    <div class="ctrl"><label>步数上限 <span id="vmax"></span></label><input id="maxsteps" type="range" min="200" max="4000" step="100" value="1200"></div>
+    <div class="ctrl"><label>存活粒子 <span id="vcount"></span></label><input id="count" type="range" min="100" max="5000" step="100" value="2000"></div>
+    <div class="ctrl"><label>墨色</label><select id="palette" class="sel">
+      <option value="0" selected>墨青</option>
+      <option value="1">炽橙</option>
+      <option value="2">冷紫</option>
+      <option value="3">宣纸（深底反白）</option>
+    </select></div>
+
+    <h2>自检</h2>
+    <div id="selfcheck" class="badge">运行中</div>
+    <div class="hint" id="selftext">正在比对落笔点与断墨点的散度……</div>
+
+    <div class="hint">
+      单击画布：在该处撒一把新粒子。<br>
+      每颗粒子每帧只沿场方向前进一步，落脚前先算当地散度：散度为负（汇聚）才准落笔，散度超过阈值（发散）就断墨并被冲散。画出来的不是「噪声的等高线」，而是这条约束下唯一允许的路径。
+    </div>
+  </aside>
+</main>
+<script>
+(function(){
+'use strict';
+
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+
+/* ---------- 确定性随机（mulberry32） ---------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------- 周期性 2D 值噪声（环面无缝） ----------
+    lattice 大小 Kx×Ky 与画布像素一一对应：u = x/W*Kx，v = y/H*Ky。
+    画布在 u/v 上正好跨度 Kx/Ky 个格子，格点下标按模回绕，
+    于是场在上下、左右边界都连续——粒子环绕时不会在接缝处跳变。 */
+function makeNoise(seed, Kx, Ky){
+  var rng = mulberry32(seed >>> 0);
+  var N = Kx * Ky;
+  var P = new Uint8Array(N * 2);
+  var i, j, t;
+  var p = new Uint8Array(N);
+  for(i = 0; i < N; i++) p[i] = i;
+  for(i = N - 1; i > 0; i--){
+    j = (rng() * (i + 1)) | 0;
+    t = p[i]; p[i] = p[j]; p[j] = t;
+  }
+  for(i = 0; i < N * 2; i++) P[i] = p[i % N];
+  var vals = new Float32Array(N);
+  for(i = 0; i < N; i++) vals[i] = rng() * 2 - 1;
+  function gridVal(ix, iy){
+    var ax = ix % Kx; if(ax < 0) ax += Kx;
+    var ay = iy % Ky; if(ay < 0) ay += Ky;
+    return vals[P[(P[ax] + ay) % N]];
+  }
+  function fade(t){ return t * t * (3 - 2 * t); }
+  function noise2(x, y){
+    var ix = Math.floor(x), iy = Math.floor(y);
+    var fx = x - ix, fy = y - iy;
+    var a = gridVal(ix, iy), b = gridVal(ix + 1, iy);
+    var c = gridVal(ix, iy + 1), d = gridVal(ix + 1, iy + 1);
+    var u = fade(fx), v = fade(fy);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+  function fbm(x, y){
+    var s = 0, amp = 1, freq = 1, norm = 0;
+    for(var o = 0; o < 4; o++){
+      s += noise2(x * freq, y * freq) * amp;
+      norm += amp;
+      amp *= 0.5; freq *= 2;
+    }
+    return s / norm;
+  }
+  return { noise2: noise2, fbm: fbm };
+}
+
+/* ---------- 调色板 ---------- */
+var PALETTES = [
+  { bgRgb: [11,15,20],  ink: [88,166,255],  fade: 0.030 },
+  { bgRgb: [11,15,20],  ink: [255,145,77],  fade: 0.030 },
+  { bgRgb: [11,15,20],  ink: [186,140,255], fade: 0.030 },
+  { bgRgb: [238,232,220], ink: [28,34,44],  fade: 0.030 }
+];
+
+/* ---------- 状态 ---------- */
+var W = 320, H = 220;
+var seed = 20261108;
+var cells = 8;              // 噪声格数（画布宽方向），实际 Ky 按高宽比取整
+var Kx = cells;
+var Ky = Math.max(1, Math.round(cells * H / W));
+var drift = 0.24;
+var tOff = 0;
+var useCurl = false;
+var showField = false;
+var stepLen = 9;
+var maxSteps = 1200;
+var pCount = 2000;
+var palIdx = 0;
+var divThresh = 1.50;
+var running = true;
+
+/* 墨量经济：汇聚区落笔耗墨慢，发散区被冲散耗墨快 */
+var COST_DRAW = 0.006;
+var COST_SOURCE = 0.030;
+
+var noise = makeNoise(seed, Kx, Ky);
+var field = new Float32Array(W * H);
+
+var particles = [];
+var totalDrawn = 0;
+var totalSkipped = 0;
+var totalDead = 0;
+var deadByInk = 0;
+var wrapCount = 0;
+var deadBySteps = 0;
+var dirChecks = 0;
+var dirOK = 0;
+var divDrawSum = 0;
+var divSkipSum = 0;
+var deadStepsSum = 0;
+
+function fieldVal(x, y){
+  if(x < 0) x = 0; else if(x >= W) x = W - 1;
+  if(y < 0) y = 0; else if(y >= H) y = H - 1;
+  return field[(y | 0) * W + (x | 0)];
+}
+
+/* 噪声坐标：画布正好铺满 Kx×Ky 个格子（周期性，见 makeNoise） */
+function angleNoise(u, v){
+  if(!useCurl){
+    return noise.fbm(u, v + tOff) * Math.PI;
+  }
+  var e = 0.08;
+  var a = noise.fbm(u, v + e + tOff);
+  var b = noise.fbm(u, v - e + tOff);
+  var c = noise.fbm(u + e, v + tOff);
+  var d = noise.fbm(u - e, v + tOff);
+  var dydx = (a - b) / (2 * e);
+  var ddx = (c - d) / (2 * e);
+  return Math.atan2(dydx, -ddx);
+}
+
+function angleAt(x, y){
+  return angleNoise(x / W * Kx, y / H * Ky);
+}
+
+function rebuildField(){
+  for(var y = 0; y < H; y++){
+    for(var x = 0; x < W; x++){
+      field[y * W + x] = angleAt(x, y);
+    }
+  }
+}
+
+/* ---------- 散度（着陆凭证） ----------
+   向量场 F = (cosθ, sinθ)，散度 div F = d(cosθ)/du + d(sinθ)/dv。
+   在噪声坐标（格）里求导，与格子大小无关，量纲稳定；
+   步长须远小于噪声最小波长（1/8 格），否则混叠。
+   div < 0：汇聚（水会流进来）→ 允许落笔
+   div > 阈值：发散（源区）→ 断墨、墨量被冲散            */
+function divergenceAt(x, y){
+  var e = 0.01;
+  var u = x / W * Kx, v = y / H * Ky;
+  var a0 = angleNoise(u - e, v);
+  var a1 = angleNoise(u + e, v);
+  var b0 = angleNoise(u, v - e);
+  var b1 = angleNoise(u, v + e);
+  return (Math.cos(a1) - Math.cos(a0)) / (2 * e) +
+         (Math.sin(b1) - Math.sin(b0)) / (2 * e);
+}
+
+/* ---------- 粒子 ---------- */
+function spawn(x, y){
+  particles.push({ x: x, y: y, steps: 0, ink: 1 });
+}
+
+function spawnMany(n, x, y, spread){
+  for(var i = 0; i < n; i++){
+    var r = Math.random() * (spread || 1);
+    var th = Math.random() * Math.PI * 2;
+    spawn(x + Math.cos(th) * r, y + Math.sin(th) * r);
+  }
+}
+
+/* 每帧只走一步；方向完全由场决定，落脚前查散度凭证 */
+function stepParticle(p){
+  var div = divergenceAt(p.x, p.y);
+  var inSource = div > divThresh;
+
+  var a = angleAt(p.x, p.y);
+  var nx = p.x + Math.cos(a) * stepLen;
+  var ny = p.y + Math.sin(a) * stepLen;
+
+  // 环面边界：从一边出去，从另一边进来（流线不断）
+  var wrapped = false;
+  if(nx < 0){ nx += W; wrapCount++; wrapped = true; } else if(nx >= W){ nx -= W; wrapCount++; wrapped = true; }
+  if(ny < 0){ ny += H; wrapCount++; wrapped = true; } else if(ny >= H){ ny -= H; wrapCount++; wrapped = true; }
+
+  if(p.steps >= maxSteps){
+    deadBySteps++;
+    return false;
+  }
+
+  if(inSource){
+    totalSkipped++;
+    divSkipSum += div;
+    p.ink -= COST_SOURCE;
+  } else {
+    totalDrawn++;
+    divDrawSum += div;
+    p.ink -= COST_DRAW;
+  }
+  if(p.ink <= 0){
+    deadByInk++;
+    return false;
+  }
+
+  // 方向一致性只在未环绕时统计（环绕会改变位移向量）
+  if(!wrapped){
+    var dot = Math.cos(a) * (nx - p.x) + Math.sin(a) * (ny - p.y);
+    dirChecks++;
+    if(dot > 0) dirOK++;
+  }
+
+  p.x = nx; p.y = ny; p.steps++;
+  return true;
+}
+
+/* ---------- 渲染 ---------- */
+var img = null, imgData = null;
+function initImage(){
+  img = ctx.createImageData(W, H);
+  imgData = img.data;
+  var m = PALETTES[palIdx].bgRgb;
+  for(var i = 0; i < W * H; i++){
+    imgData[i * 4] = m[0];
+    imgData[i * 4 + 1] = m[1];
+    imgData[i * 4 + 2] = m[2];
+    imgData[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function putPixel(x, y, alpha){
+  x |= 0; y |= 0;
+  if(x < 0 || x >= W || y < 0 || y >= H) return;
+  var i = (y * W + x) * 4;
+  var c = PALETTES[palIdx].ink;
+  imgData[i]     = Math.round(imgData[i]     + (c[0] - imgData[i]) * alpha);
+  imgData[i + 1] = Math.round(imgData[i + 1] + (c[1] - imgData[i + 1]) * alpha);
+  imgData[i + 2] = Math.round(imgData[i + 2] + (c[2] - imgData[i + 2]) * alpha);
+}
+
+function fadeFrame(){
+  var f = PALETTES[palIdx].fade;
+  var m = PALETTES[palIdx].bgRgb;
+  var inv = 1 - f;
+  for(var i = 0; i < W * H; i++){
+    var j = i * 4;
+    imgData[j]     = m[0] + (imgData[j]     - m[0]) * inv;
+    imgData[j + 1] = m[1] + (imgData[j + 1] - m[1]) * inv;
+    imgData[j + 2] = m[2] + (imgData[j + 2] - m[2]) * inv;
+  }
+}
+
+function drawField(){
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = '#58a6ff';
+  ctx.lineWidth = 0.6;
+  var step = 18;
+  for(var y = step / 2; y < H; y += step){
+    for(var x = step / 2; x < W; x += step){
+      var a = fieldVal(x, y);
+      ctx.beginPath();
+      ctx.moveTo(x - Math.cos(a) * 6, y - Math.sin(a) * 6);
+      ctx.lineTo(x + Math.cos(a) * 6, y + Math.sin(a) * 6);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function flushImage(){
+  ctx.putImageData(img, 0, 0);
+  if(showField) drawField();
+}
+
+/* ---------- 主循环 ---------- */
+function loop(){
+  if(running){
+    tOff += drift * 0.001;
+    // 场数组只用于背景场线叠加；粒子直接用 angleAt 采样，不必每帧重建
+    if(showField) rebuildField();
+    fadeFrame();
+    var alive = [];
+    var ink;
+    for(var i = 0; i < particles.length; i++){
+      var p = particles[i];
+      if(stepParticle(p)){
+        ink = p.ink;
+        if(ink > 1) ink = 1;
+        if(ink < 0) ink = 0;
+        putPixel(p.x, p.y, 0.60 * ink);
+        alive.push(p);
+      } else {
+        totalDead++;
+        deadStepsSum += p.steps;
+      }
+    }
+    particles = alive;
+    if(particles.length < pCount){
+      var need = Math.min(pCount - particles.length, 40);
+      spawnMany(need, W / 2, H / 2, Math.min(W, H) * 0.42);
+    }
+    flushImage();
+    updateStat();
+    updateSelfcheck();
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- UI ---------- */
+function avgSteps(){
+  return totalDead > 0 ? deadStepsSum / totalDead : 0;
+}
+
+function updateStat(){
+  var el = document.getElementById('stat');
+  el.textContent =
+    '存活粒子: ' + particles.length + '\n' +
+    '落笔: ' + totalDrawn.toLocaleString() + '  断墨: ' + totalSkipped.toLocaleString() + '\n' +
+    '死亡: 墨尽 ' + deadByInk + ' / 步尽 ' + deadBySteps + '  环绕: ' + wrapCount + '\n' +
+    '平均步数: ' + avgSteps().toFixed(0) + '\n' +
+    '种子: ' + seed + '  格子: ' + Kx + '×' + Ky + '\n' +
+    '场: ' + (useCurl ? '旋度（无散）' : '直接角度') + '\n' +
+    '漂移: ' + drift.toFixed(2) + '  步长: ' + stepLen;
+}
+
+function updateSelfcheck(){
+  if(totalDrawn < 50 || totalSkipped < 50 || dirChecks < 50) return;
+  var dirRatio = dirOK / dirChecks;
+  var avgDraw = divDrawSum / totalDrawn;
+  var avgSkip = divSkipSum / totalSkipped;
+  var ok = dirRatio > 0.999 && avgDraw <= divThresh && avgDraw < avgSkip;
+  var el = document.getElementById('selfcheck');
+  var tx = document.getElementById('selftext');
+  if(ok){
+    el.textContent = '通过';
+    el.className = 'badge ok';
+    tx.textContent = '位移方向与场一致率 ' + (dirRatio * 100).toFixed(1) +
+      '%；落笔点平均散度 ' + avgDraw.toFixed(2) + '（≤ 阈值 ' + divThresh.toFixed(2) +
+      '），断墨点平均散度 ' + avgSkip.toFixed(2) + '。约束成立：墨只在汇聚区收束，到源区就断。';
+  } else {
+    el.textContent = '异常';
+    el.className = 'badge';
+    tx.textContent = '方向一致率 ' + (dirRatio * 100).toFixed(1) + '%，落笔平均散度 ' +
+      avgDraw.toFixed(2) + '，断墨平均散度 ' + avgSkip.toFixed(2) + '，请检查场参数。';
+  }
+}
+
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(function(){ t.style.opacity = '0'; }, 1400);
+}
+
+function bindRange(id, vid, fmt, cb){
+  var el = document.getElementById(id);
+  var v = document.getElementById(vid);
+  function upd(){
+    var val = parseFloat(el.value);
+    v.textContent = fmt(val);
+    cb(val);
+  }
+  el.addEventListener('input', upd);
+  upd();
+}
+
+bindRange('seed', 'vseed', function(v){ return v; }, function(v){
+  seed = v; noise = makeNoise(seed, Kx, Ky); tOff = 0; rebuildField();
+});
+bindRange('cells', 'vcells', function(v){ return v; }, function(v){
+  cells = v; Kx = cells; Ky = Math.max(1, Math.round(cells * H / W));
+  noise = makeNoise(seed, Kx, Ky); tOff = 0; rebuildField();
+});
+bindRange('drift', 'vdrift', function(v){ return (v / 100).toFixed(2); }, function(v){ drift = v / 100; });
+bindRange('thresh', 'vthresh', function(v){ return (v / 100).toFixed(2); }, function(v){ divThresh = v / 100; });
+bindRange('step', 'vstep', function(v){ return v; }, function(v){ stepLen = v; });
+bindRange('maxsteps', 'vmax', function(v){ return v; }, function(v){ maxSteps = v; });
+bindRange('count', 'vcount', function(v){ return v; }, function(v){ pCount = v; });
+
+document.getElementById('curl').addEventListener('change', function(){
+  useCurl = this.checked;
+  rebuildField();
+});
+document.getElementById('showField').addEventListener('change', function(){
+  showField = this.checked;
+});
+document.getElementById('palette').addEventListener('change', function(){
+  palIdx = parseInt(this.value, 10);
+  initImage();
+  rebuildField();
+});
+document.getElementById('btnPlay').addEventListener('click', function(){
+  running = !running;
+  this.textContent = running ? '暂停' : '开始';
+});
+function resetCounters(){
+  totalDrawn = 0; totalSkipped = 0; totalDead = 0;
+  deadByInk = 0; wrapCount = 0; deadBySteps = 0;
+  dirChecks = 0; dirOK = 0; divDrawSum = 0; divSkipSum = 0;
+  deadStepsSum = 0;
+}
+document.getElementById('btnClearInk').addEventListener('click', function(){
+  initImage();
+  particles = [];
+  resetCounters();
+  toast('墨水已洗掉，粒子重新布设');
+});
+document.getElementById('btnReset').addEventListener('click', function(){
+  seed = Math.floor(Math.random() * 9999) + 1;
+  document.getElementById('seed').value = seed;
+  document.getElementById('vseed').textContent = seed;
+  noise = makeNoise(seed, Kx, Ky);
+  tOff = 0;
+  initImage();
+  particles = [];
+  resetCounters();
+  spawnMany(pCount, W / 2, H / 2, Math.min(W, H) * 0.42);
+  toast('已按种子 ' + seed + ' 重新布场');
+});
+
+canvas.addEventListener('pointerdown', function(ev){
+  var r = canvas.getBoundingClientRect();
+  var px = (ev.clientX - r.left) / r.width * W;
+  var py = (ev.clientY - r.top) / r.height * H;
+  spawnMany(120, px, py, 8);
+  toast('已在 (' + Math.round(px) + ',' + Math.round(py) + ') 撒下 120 颗粒子');
+});
+
+/* ---------- 启动 ---------- */
+function resizeCanvas(){
+  canvas.width = W; canvas.height = H;
+  initImage();
+}
+
+resizeCanvas();
+rebuildField();
+spawnMany(pCount, W / 2, H / 2, Math.min(W, H) * 0.42);
+updateStat();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

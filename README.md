@@ -33,6 +33,7 @@
 | 神经雪 · 脉冲雪片 | [neural-snow](neural-snow/) | 扩散限制聚集（DLA）自己长雪晶：粒子从簇外随机游走碰到冰才粘，电势放电只当"天气" |
 | 反应扩散 · 图灵斑图 | [reaction-diffusion](reaction-diffusion/) | Gray-Scott 反应扩散：f/k 双参数相变，鼠标涂种子，斑点/条纹/迷宫从局部规则涌现 |
 | Langton 蚂蚁 · 规则涌现 | [langtons-ant](langtons-ant/) | Turmite 可编辑规则表，highway 自发涌现，规则编码可分享 |
+| 流线仪 · 噪声场寻路 | [flow-field-ink](flow-field-ink/) | 周期性噪声流场 + 散度凭证：只在汇聚区落笔，源区断墨并被冲散，环面无缝 |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

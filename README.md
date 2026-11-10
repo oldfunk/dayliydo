@@ -34,6 +34,7 @@
 | 反应扩散 · 图灵斑图 | [reaction-diffusion](reaction-diffusion/) | Gray-Scott 反应扩散：f/k 双参数相变，鼠标涂种子，斑点/条纹/迷宫从局部规则涌现 |
 | Langton 蚂蚁 · 规则涌现 | [langtons-ant](langtons-ant/) | Turmite 可编辑规则表，highway 自发涌现，规则编码可分享 |
 | 流线仪 · 噪声场寻路 | [flow-field-ink](flow-field-ink/) | 周期性噪声流场 + 散度凭证：只在汇聚区落笔，源区断墨并被冲散，环面无缝 |
+| 沙堆临界 · 自组织临界沙盘 | [sandpile-criticality](sandpile-criticality/) | BTW 沙堆：栈驱动崩塌 + 统计预热 + 单粒投放协议，崩塌规模分布长出教科书式幂律 |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

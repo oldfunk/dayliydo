@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>沙堆临界 · 自组织临界沙盘</title>
+<style>
+:root{
+  --bg:#0a0d13; --panel:#10151e; --panel2:#151b26; --line:#222b3a;
+  --text:#dfe6f0; --muted:#8b96a8; --faint:#5f6a7d;
+  --accent:#e9c46a; --teal:#2a9d8f; --red:#ef6f6f; --blue:#5aa2f7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:radial-gradient(1200px 600px at 20% -10%, #121a26 0%, var(--bg) 60%);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+  font-size:14px; line-height:1.6;
+  padding:26px clamp(14px,3vw,36px) 48px;
+  min-height:100vh;
+}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:clamp(20px,3vw,28px);margin:0 0 6px;font-weight:650;letter-spacing:.5px}
+h1 .dot{color:var(--accent);margin:0 6px}
+.sub{margin:0;color:var(--muted);max-width:780px;font-size:13px}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+main{display:flex;gap:20px;align-items:flex-start}
+.stage{flex:1 1 auto;min-width:0}
+.panel{flex:0 0 344px;display:flex;flex-direction:column;gap:14px}
+.frame{background:#05070b;border:1px solid var(--line);border-radius:12px;padding:10px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
+canvas#pile{display:block;width:100%;max-width:576px;margin:0 auto;image-rendering:pixelated;border-radius:6px;background:#05070b;cursor:crosshair;touch-action:none}
+.readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin-top:12px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.stat .k{display:block;color:var(--faint);font-size:11px;letter-spacing:.4px}
+.stat .v{display:block;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.hint{color:var(--faint);font-size:12px;margin:10px 2px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h2{margin:0 0 10px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.8px}
+.badge{font-size:10px;font-weight:600;letter-spacing:.5px;color:var(--accent);background:rgba(233,196,106,.12);border:1px solid rgba(233,196,106,.35);border-radius:20px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.badge.hide{display:none}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0;flex-wrap:wrap}
+.row label{color:var(--muted);font-size:13px;min-width:86px}
+.row .val{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.seg button{background:transparent;border:0;color:var(--muted);font:inherit;font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer}
+.seg button.on{background:#22304a;color:var(--text)}
+.seg button:hover:not(.on){color:var(--text)}
+input[type=range]{flex:1;accent-color:var(--accent);min-width:120px}
+select,input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font:inherit;font-size:13px}
+.seedinput{width:112px}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 13px;font:inherit;font-size:13px;cursor:pointer}
+.btn:hover{border-color:#33415a;background:#1b2331}
+.btn.small{padding:5px 10px;font-size:12px}
+.note{color:var(--faint);font-size:12px;margin:8px 0 0}
+canvas#hist{display:block;width:100%;background:#0b0f16;border:1px solid var(--line);border-radius:8px}
+details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;letter-spacing:.4px}
+details summary:hover{color:var(--text)}
+.about p{margin:10px 0 0;color:var(--muted);font-size:12.5px}
+.about strong{color:var(--text)}
+@media (max-width:920px){
+  main{flex-direction:column}
+  .panel{flex:1 1 auto;width:100%}
+  .top{align-items:flex-start;flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>沙堆临界 <span class="dot">·</span> 自组织临界沙盘</h1>
+    <p class="sub">全部规则只有一条：某个格子高度 ≥ T 就崩塌，扣掉 T 粒分给相邻格子。没有预设图案——分形边缘、连锁崩塌、无标度的崩塌规模分布，都是这条局部规则的涌现性质。</p>
+  </div>
+  <div class="top-actions">
+    <button id="btn-pause" class="btn">暂停</button>
+    <button id="btn-step" class="btn">单步</button>
+    <button id="btn-reset" class="btn">重置</button>
+    <button id="btn-export" class="btn">导出 PNG</button>
+  </div>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="frame">
+      <canvas id="pile" width="576" height="576"></canvas>
+    </div>
+    <div class="readouts">
+      <div class="stat"><span class="k">已投放沙粒</span><span class="v" id="r-grains">0</span></div>
+      <div class="stat"><span class="k">投放波次</span><span class="v" id="r-waves">0</span></div>
+      <div class="stat"><span class="k">累计崩塌格次</span><span class="v" id="r-topplings">0</span></div>
+      <div class="stat"><span class="k">最大崩塌规模</span><span class="v" id="r-maxaval">0</span></div>
+      <div class="stat"><span class="k">当前崩塌波前</span><span class="v" id="r-front">0</span></div>
+      <div class="stat"><span class="k">逸出沙粒</span><span class="v" id="r-lost">0</span></div>
+      <div class="stat"><span class="k">平均高度</span><span class="v" id="r-avg">0.000</span></div>
+    </div>
+    <p class="hint">点击 / 拖动画布可在任意位置投放沙粒 · 空格暂停 · 暂停后「单步」每次推进一帧 · 「每波投放粒数」设为 1 即教科书式单粒崩塌统计</p>
+  </section>
+
+  <aside class="panel">
+    <section class="card">
+      <h2>控制</h2>
+      <div class="row">
+        <label>投放模式</label>
+        <div class="seg" id="mode-seg">
+          <button data-mode="center" class="on">中心</button>
+          <button data-mode="random">随机</button>
+          <button data-mode="off">关闭</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>每波投放粒数 <span class="val" id="drops-val">1</span></label>
+        <input type="range" id="drops" min="1" max="100" value="1">
+      </div>
+      <div class="row">
+        <label>每帧最多波数 <span class="val" id="waves-val">30</span></label>
+        <input type="range" id="waves" min="1" max="100" value="30">
+      </div>
+      <div class="row">
+        <label>每帧崩塌格次 <span class="val" id="batch-val">1000</span></label>
+        <input type="range" id="batch" min="1" max="2000" value="1000">
+      </div>
+      <div class="row">
+        <label>模型</label>
+        <div class="seg" id="model-seg">
+          <button data-model="btw" class="on">BTW 确定性</button>
+          <button data-model="manna">Manna 随机</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>阈值 T <span class="val" id="t-val">4</span></label>
+        <input type="range" id="threshold" min="3" max="8" value="4" disabled>
+      </div>
+      <div class="row">
+        <label>网格尺寸</label>
+        <select id="size">
+          <option value="96">96 × 96</option>
+          <option value="128" selected>128 × 128</option>
+          <option value="160">160 × 160</option>
+          <option value="192">192 × 192</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>笔刷</label>
+        <select id="brush">
+          <option value="0">1 × 1</option>
+          <option value="1" selected>3 × 3</option>
+          <option value="2">5 × 5</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>种子</label>
+        <input type="number" id="seed" class="seedinput" value="20261111">
+        <button id="btn-reseed" class="btn small">换一批</button>
+      </div>
+      <p class="note" id="model-note">BTW：阈值固定 4，崩塌时向上下左右四格各分一粒（ Abby Stein 的确定性沙堆）。</p>
+    </section>
+
+    <section class="card">
+      <h2>崩塌规模分布<span class="badge" id="warm-badge">预热中</span></h2>
+      <canvas id="hist" width="300" height="150"></canvas>
+      <p class="note">横轴崩塌规模（格次，log2 分桶），纵轴出现次数（对数）。临界态下应近似一条下降直线——无标度。统计在堆内沙粒达到每格约 2 粒（稳态）后才开始记录，之前的崩塌属于堆在生长的瞬态。</p>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>原理 · 图案是怎么自己长出来的</summary>
+        <div class="about">
+          <p><strong>规则只有两条：</strong>① 格子高度 ≥ T 时崩塌，扣掉 T 粒分给相邻格子（BTW 固定分给上下左右四格；Manna 随机分给 T 个相邻格）。② 边界敞开，分到界外的沙粒永久逸出。</p>
+          <p><strong>局部 → 全局：</strong>没有任何代码知道"图案"该长什么样。每粒沙只与自己的四邻打交道，但一次崩塌会引发连锁崩塌；分形边缘、圆锥堆、无标度的崩塌规模分布，全部是这条规则的涌现性质，不是画出来的。</p>
+          <p><strong>自组织临界：</strong>持续投沙、崩塌、逸出，系统会自己停在临界态——平均高度稳定在 2.0～2.2，崩塌规模分布趋近幂律。这是 Bak–Tang–Wiesenfeld 1987 年的 BTW 沙堆模型，"自组织临界"概念的出处。</p>
+          <p><strong>怎么玩：</strong>中心投放看圆锥形分形堆生长；随机投放看系统自我组织到临界态；调小「每帧崩塌格次」能一格一格看崩塌波前扩散；点击画布在任意位置制造一次局部崩塌。<strong>「每波投放粒数」设为 1</strong> 时，每次崩塌都干净地归属一粒沙，直方图就是教科书式的单粒崩塌分布；调大它（比如 20）会合并多次崩塌，分布会变形——这本身也是个值得观察的对比。</p>
+        </div>
+      </details>
+    </section>
+  </aside>
+</main>
+
+<script>
+// [模型层开始]
+// 沙堆模型（BTW / Manna）——纯逻辑，无 DOM，可在 node 中独立运行与测试。
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function createSandpile(opts) {
+  var W = opts.W, H = opts.H;
+  var T = opts.T || 4;
+  var deterministic = !!opts.deterministic;
+  var seed = opts.seed || 1;
+  var rng = mulberry32(seed);
+  var N = W * H;
+  // 必须用 32 位整数：大崩塌时一个格子在等待出栈期间可能累积数百粒，
+  // 用 Uint8Array 会按模 256 回绕，凭空吞掉沙粒。
+  var h = new Int32Array(N);
+  var flash = new Float32Array(N);
+  var stack = [];
+  var sp = 0;
+  var grains = 0, topplings = 0, lost = 0;
+  var curAval = 0, maxAval = 0;
+  var hist = new Float64Array(16);
+  // 统计预热：堆内沙粒（grains - lost）达到 N（约每格 1 粒）时才认为系统
+  // 进入稳态，之前的崩塌属于"堆在长"的瞬态，不计入幂律分布。
+  var recording = false;
+
+  // 只在高度"跨过"阈值时入栈；出栈时若仍 ≥ T 会再次入栈。
+  function push(i) { stack[sp++] = i; }
+
+  function give(j) {
+    h[j]++;
+    if (h[j] === T) push(j);
+  }
+
+  function addGrain(i) {
+    grains++;
+    h[i]++;
+    if (flash[i] < 0.3) flash[i] = 0.3;
+    if (h[i] === T) push(i);
+  }
+
+  function topple(i) {
+    h[i] -= T;
+    flash[i] = 1;
+    topplings++;
+    curAval++;
+    var x = i % W, y = (i / W) | 0;
+    if (deterministic) {
+      if (x > 0) give(i - 1); else lost++;
+      if (x < W - 1) give(i + 1); else lost++;
+      if (y > 0) give(i - W); else lost++;
+      if (y < H - 1) give(i + W); else lost++;
+    } else {
+      for (var k = 0; k < T; k++) {
+        var r = (rng() * 4) | 0, j = -1;
+        if (r === 0) { if (x > 0) j = i - 1; }
+        else if (r === 1) { if (x < W - 1) j = i + 1; }
+        else if (r === 2) { if (y > 0) j = i - W; }
+        else { if (y < H - 1) j = i + W; }
+        if (j < 0) lost++; else give(j);
+      }
+    }
+    if (h[i] >= T) push(i);
+  }
+
+  // 每帧处理 batch 次崩塌；栈空时记录一次完整崩塌的规模。
+  function step(batch) {
+    var n = batch;
+    while (n-- > 0 && sp > 0) {
+      var i = stack[--sp];
+      if (h[i] >= T) topple(i);
+    }
+    if (sp === 0 && curAval > 0) {
+      if (!recording && grains - lost >= N) recording = true;
+      if (recording) {
+        var b = Math.min(15, Math.floor(Math.log2(curAval)));
+        hist[b]++;
+        if (curAval > maxAval) maxAval = curAval;
+      }
+      curAval = 0;
+    }
+  }
+
+  function reset() {
+    h.fill(0); flash.fill(0); hist.fill(0);
+    sp = 0; grains = 0; topplings = 0; lost = 0;
+    curAval = 0; maxAval = 0; recording = false;
+  }
+
+  function setParams(p) {
+    if (p.T) T = p.T;
+    if (typeof p.deterministic === 'boolean') deterministic = p.deterministic;
+    recording = false;
+  }
+
+  function reseed(s) { seed = s; rng = mulberry32(s); }
+
+  return {
+    W: W, H: H, T: T, deterministic: deterministic,
+    h: h, flash: flash, hist: hist,
+    addGrain: addGrain, step: step, reset: reset,
+    setParams: setParams, reseed: reseed,
+    stats: function () {
+      return {
+        grains: grains, topplings: topplings, lost: lost,
+        maxAval: maxAval, curAval: curAval, front: sp,
+        recording: recording
+      };
+    }
+  };
+}
+// [模型层结束]
+
+// ==================== 视图层 ====================
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $('pile'), ctx = canvas.getContext('2d');
+  var histCanvas = $('hist'), hctx = histCanvas.getContext('2d');
+  var off = document.createElement('canvas');
+  var offCtx = off.getContext('2d');
+
+  var S = {
+    W: 128, H: 128, T: 4, deterministic: true, seed: 20261111,
+    model: null, dropRng: mulberry32(20261111),
+    mode: 'center', drops: 1, maxWaves: 30, batch: 1000, brush: 1,
+    paused: false, painting: false, waves: 0
+  };
+
+  var el = {
+    grains: $('r-grains'), waves: $('r-waves'), topplings: $('r-topplings'), maxaval: $('r-maxaval'),
+    front: $('r-front'), lost: $('r-lost'), avg: $('r-avg'),
+    drops: $('drops'), dropsVal: $('drops-val'),
+    wavesInput: $('waves'), wavesVal: $('waves-val'),
+    batch: $('batch'), batchVal: $('batch-val'),
+    threshold: $('threshold'), tVal: $('t-val'),
+    size: $('size'), brush: $('brush'), seed: $('seed'),
+    warmBadge: $('warm-badge'),
+    modelNote: $('model-note'), pauseBtn: $('btn-pause')
+  };
+
+  function fmt(n) {
+    if (n >= 1e8) return (n / 1e8).toFixed(2) + ' 亿';
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e4) return (n / 1e3).toFixed(1) + 'k';
+    return String(n);
+  }
+
+  function rebuild() {
+    S.model = createSandpile({
+      W: S.W, H: S.H, T: S.T,
+      deterministic: S.deterministic, seed: S.seed
+    });
+    S.dropRng = mulberry32(S.seed);
+    S.waves = 0;
+    var scale = Math.max(1, Math.round(600 / S.W));
+    off.width = S.W; off.height = S.H;
+    canvas.width = S.W * scale; canvas.height = S.H * scale;
+    img = null;
+  }
+
+  var img = null, buf = null;
+
+  function render() {
+    var m = S.model, W = m.W, N = W * m.H;
+    if (!img || img.width !== W || img.height !== m.H) {
+      img = offCtx.createImageData(W, m.H);
+      buf = new Uint32Array(img.data.buffer);
+    }
+    var h = m.h, f = m.flash;
+    for (var i = 0; i < N; i++) {
+      var hh = h[i], fl = f[i], r, g, b;
+      if (hh === 0) { r = 9; g = 13; b = 20; }
+      else if (hh === 1) { r = 21; g = 62; b = 82; }
+      else if (hh === 2) { r = 30; g = 138; b = 118; }
+      else { r = 222; g = 176; b = 84; }
+      if (fl > 0.02) {
+        var t = fl > 1 ? 1 : fl;
+        r += (255 - r) * t * 0.85;
+        g += (246 - g) * t * 0.85;
+        b += (214 - b) * t * 0.85;
+      }
+      buf[i] = (255 << 24) | ((b | 0) << 16) | ((g | 0) << 8) | (r | 0);
+    }
+    offCtx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+  }
+
+  function decay() {
+    var f = S.model.flash, N = f.length;
+    for (var i = 0; i < N; i++) {
+      if (f[i] > 0.02) f[i] *= 0.90; else f[i] = 0;
+    }
+  }
+
+  function drawHist() {
+    var w = histCanvas.width, hgt = histCanvas.height;
+    hctx.clearRect(0, 0, w, hgt);
+    var padL = 36, padR = 6, padT = 8, padB = 20;
+    var pw = w - padL - padR, ph = hgt - padT - padB;
+    var hist = S.model.hist, maxC = 1;
+    for (var i = 0; i < hist.length; i++) if (hist[i] > maxC) maxC = hist[i];
+    var lgMax = Math.log10(maxC); if (lgMax < 1) lgMax = 1;
+    hctx.font = '10px sans-serif';
+    hctx.textBaseline = 'middle';
+    for (var e = 0; e <= lgMax; e++) {
+      var y = padT + ph - (e / lgMax) * ph;
+      hctx.strokeStyle = '#1d2532';
+      hctx.beginPath(); hctx.moveTo(padL, y); hctx.lineTo(w - padR, y); hctx.stroke();
+      hctx.fillStyle = '#78839a'; hctx.textAlign = 'right';
+      hctx.fillText(e === 0 ? '1' : '1e' + e, padL - 4, y);
+    }
+    var bw = pw / hist.length;
+    for (var b = 0; b < hist.length; b++) {
+      if (hist[b] <= 0) continue;
+      var bh = (Math.log10(hist[b]) / lgMax) * ph;
+      hctx.fillStyle = b < 6 ? '#2a9d8f' : (b < 11 ? '#e9c46a' : '#ef6f6f');
+      hctx.fillRect(padL + b * bw + 1, padT + ph - bh, bw - 2, bh);
+    }
+    hctx.fillStyle = '#78839a'; hctx.textAlign = 'center';
+    var labels = [[0, '1'], [2, '4'], [4, '16'], [6, '64'], [8, '256'], [10, '1k'], [12, '4k'], [14, '16k']];
+    for (var L = 0; L < labels.length; L++) {
+      hctx.fillText(labels[L][1], padL + labels[L][0] * bw + bw / 2, hgt - 8);
+    }
+  }
+
+  function updateStats() {
+    var m = S.model, st = m.stats();
+    el.grains.textContent = fmt(st.grains);
+    el.waves.textContent = fmt(S.waves);
+    el.topplings.textContent = fmt(st.topplings);
+    el.maxaval.textContent = fmt(st.maxAval);
+    el.front.textContent = fmt(st.front);
+    el.lost.textContent = fmt(st.lost);
+    var sum = 0, N = m.h.length;
+    for (var i = 0; i < N; i++) sum += m.h[i];
+    el.avg.textContent = (sum / N).toFixed(3);
+    el.warmBadge.classList.toggle('hide', st.recording);
+    drawHist();
+  }
+
+  // 一帧的推进量：一份崩塌格次预算，栈空就投放新一波。
+  // 只有完全放松才投下一波，因而每次崩塌都干净地归属到一波，
+  // 崩塌规模分布才是物理上可解释的。
+  function tick() {
+    var m = S.model;
+    var budget = S.batch;
+    for (var w = 0; w < S.maxWaves && budget > 0; w++) {
+      var st = m.stats();
+      if (S.mode !== 'off' && st.front === 0) {
+        for (var k = 0; k < S.drops; k++) {
+          var i;
+          if (S.mode === 'center') {
+            i = ((S.H >> 1) * S.W + (S.W >> 1));
+          } else {
+            var x = (S.dropRng() * S.W) | 0, y = (S.dropRng() * S.H) | 0;
+            i = y * S.W + x;
+          }
+          m.addGrain(i);
+        }
+        S.waves++;
+      }
+      m.step(budget);
+      budget -= (m.stats().topplings - st.topplings);
+    }
+    decay();
+  }
+
+  function frame() {
+    if (!S.paused) tick();
+    render();
+    updateStats();
+    requestAnimationFrame(frame);
+  }
+
+  function setPaused(p) {
+    S.paused = p;
+    el.pauseBtn.textContent = p ? '继续' : '暂停';
+  }
+
+  function stepOnce() {
+    if (!S.paused) setPaused(true);
+    tick();
+    render();
+    updateStats();
+  }
+
+  function doReset() {
+    S.model.reset();
+  }
+
+  // ---------- 事件 ----------
+  function bind() {
+    $('mode-seg').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      S.mode = b.dataset.mode;
+      var bs = this.querySelectorAll('button');
+      for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', bs[i] === b);
+    });
+
+    $('model-seg').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var isBtw = b.dataset.model === 'btw';
+      S.deterministic = isBtw;
+      S.T = isBtw ? 4 : +el.threshold.value;
+      S.model.setParams({ T: S.T, deterministic: S.deterministic });
+      el.threshold.disabled = isBtw;
+      el.tVal.textContent = S.T;
+      el.modelNote.textContent = isBtw
+        ? 'BTW：阈值固定 4，崩塌时向上下左右四格各分一粒（确定性沙堆）。'
+        : 'Manna：阈值 T 可调，崩塌时把 T 粒随机分给相邻格（随机重分布）。';
+      var bs = this.querySelectorAll('button');
+      for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', bs[i] === b);
+    });
+
+    el.drops.addEventListener('input', function () {
+      S.drops = +this.value; el.dropsVal.textContent = this.value;
+    });
+    el.wavesInput.addEventListener('input', function () {
+      S.maxWaves = +this.value; el.wavesVal.textContent = this.value;
+    });
+    el.batch.addEventListener('input', function () {
+      S.batch = +this.value; el.batchVal.textContent = this.value;
+    });
+    el.threshold.addEventListener('input', function () {
+      S.T = +this.value; el.tVal.textContent = this.value;
+      S.model.setParams({ T: S.T });
+    });
+    el.size.addEventListener('change', function () {
+      S.W = +this.value; S.H = +this.value;
+      rebuild();
+    });
+    el.brush.addEventListener('change', function () {
+      S.brush = +this.value;
+    });
+    el.seed.addEventListener('change', function () {
+      S.seed = +this.value || 1;
+      S.model.reseed(S.seed);
+      S.dropRng = mulberry32(S.seed);
+    });
+    $('btn-reseed').addEventListener('click', function () {
+      S.seed = (Math.random() * 1e9) | 0;
+      el.seed.value = S.seed;
+      S.model.reseed(S.seed);
+      S.dropRng = mulberry32(S.seed);
+    });
+
+    el.pauseBtn.addEventListener('click', function () { setPaused(!S.paused); });
+    $('btn-step').addEventListener('click', stepOnce);
+    $('btn-reset').addEventListener('click', doReset);
+    $('btn-export').addEventListener('click', function () {
+      var a = document.createElement('a');
+      a.download = 'sandpile-' + S.seed + '.png';
+      a.href = canvas.toDataURL('image/png');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    canvas.addEventListener('pointerdown', function (e) {
+      S.painting = true;
+      canvas.setPointerCapture(e.pointerId);
+      paintAt(e);
+    });
+    canvas.addEventListener('pointermove', function (e) { if (S.painting) paintAt(e); });
+    canvas.addEventListener('pointerup', function () { S.painting = false; });
+    canvas.addEventListener('pointercancel', function () { S.painting = false; });
+
+    document.addEventListener('keydown', function (e) {
+      var t = e.target;
+      if (t && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(t.tagName)) return;
+      if (e.code === 'Space') { e.preventDefault(); setPaused(!S.paused); }
+      else if (e.key === 'r' || e.key === 'R') { doReset(); }
+      else if (e.key === 's' || e.key === 'S') { stepOnce(); }
+    });
+  }
+
+  function paintAt(e) {
+    var rect = canvas.getBoundingClientRect();
+    var x = Math.floor((e.clientX - rect.left) / rect.width * S.W);
+    var y = Math.floor((e.clientY - rect.top) / rect.height * S.H);
+    var r = S.brush;
+    for (var dy = -r; dy <= r; dy++) {
+      for (var dx = -r; dx <= r; dx++) {
+        var nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < S.W && ny >= 0 && ny < S.H) S.model.addGrain(ny * S.W + nx);
+      }
+    }
+  }
+
+  rebuild();
+  bind();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

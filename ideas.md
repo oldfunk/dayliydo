@@ -17,12 +17,13 @@ neural-snow（神经雪 · 脉冲雪片）—— 放电沙盘里自己长雪晶�
 
 ## 2026 年 11 月主题：涌现图案 · 局部规则（11-01 提前定题）
 视觉/交互实验系列延续。共同点：**图案不是被画出来的，而是从局部规则里长出来**——每个作品都是一个可亲手推演的 PDE/自动机/噪声场。
-计划 3 件作品（本月已完成 3/3）：
+计划 3 件作品，另加做第 4 件（本月已完成 4/4）：
 1. reaction-diffusion（反应扩散 · 图灵斑图）—— Gray-Scott 反应扩散，f/k 双参数相变，鼠标涂种子（已完成）
 2. langtons-ant（Langton 蚂蚁 · 规则涌现）—— Turmite 可编辑规则表，highway 自发涌现，规则编码可分享（已完成）
 3. flow-field-ink（流线仪 · 噪声场寻路）—— 周期性值噪声流场 + 散度凭证：粒子每步先查散度，只在汇聚区落笔，源区断墨并被冲散；环面无缝（已完成）
+4. sandpile-criticality（沙堆临界 · 自组织临界沙盘）—— BTW 沙堆：栈驱动崩塌 + 统计预热 + 单粒投放协议，崩塌规模分布长出教科书式幂律（已完成）
 
-联网调研来源：HN Show HN（HTML QR Codes 交互画布）、Project Echo 文本可视化。
+联网调研来源：HN Show HN（HTML QR Codes 交互画布）、Project Echo 文本可视化、HN「Sandpiles and Self-organized criticality」与 SandSpiel（落沙玩具）对照。
 
 ## 已归档主题：2026 年 9–10 月 · TRPG 桌面工具（3/3 完成）
 1. oracle-deck（神谕卡牌）—— 三级递进神谕 + 命运权重 + 自定义牌组
@@ -63,6 +64,7 @@ neural-snow（神经雪 · 脉冲雪片）—— 放电沙盘里自己长雪晶�
 | 2026-11-04 | langtons-ant | Langton 蚂蚁 Turmite：可编辑规则表（L/R/S/U + 新颜色），highway 自发涌现，规则编码可复制分享，highway 周期检测 |
 | 2026-11-01 | reaction-diffusion | Gray-Scott 反应扩散：f/k 双参数相变（斑点/条纹/迷宫/孔洞/珊瑚/混沌），鼠标涂种子，V 浓度场可视化 |
 | 2026-11-08 | flow-field-ink | 周期性值噪声流场 + 散度凭证：粒子每步先查散度，只在汇聚区落笔、源区断墨并被冲散；环面无缝（对边场角差 0）；墨迹实测偏向汇聚区 |
+| 2026-11-11 | sandpile-criticality | BTW 沙堆自组织临界：栈驱动崩塌（跨阈值才入栈）+ 统计预热（堆内沙粒 < N 不记录）+ 单粒投放协议；单粒投放 6 万波后平均高度 2.111、崩塌规模分布 log2 分桶单调下降（2751→42），最大崩塌 10 万格次 |
 
 ---
 ## 灵感日志
@@ -82,3 +84,4 @@ neural-snow（神经雪 · 脉冲雪片）—— 放电沙盘里自己长雪晶�
 2026-08-30 | https://news.ycombinator.com/item?id=45408021, https://chromewebstore.google.com/detail/empty-new-tab-page/dpjamkmjmigaoobjbekmfgabipmfilij | 新标签页空白画布弹球游戏 | 利用浏览器新标签页的空白画布做游戏，游戏即页面本身，无额外 UI
 2026-08-31 | https://news.ycombinator.com/item?id=23400911 | 标题栏隐写游戏 TitleRun | 将文字信息隐藏在网页标题栏中，通过滚动交互解码，创造「网页隐写术」体验
 2026-11-08 | https://github.com/obskyr/flowfield, https://hn.algolia.com/api/v1/search?query=flow%20field%20generative%20art | 流场生成艺术：粒子沿向量场轨迹沉积墨迹，画面自己长出来 | 定题「流线仪」补完涌现图案系列：流场作品遍地都是，但都是「沿场画线」而已，没有约束。本作加一条可验证的着陆凭证——**散度**：每颗粒子落脚前先算当地散度，只在汇聚区落笔，源区断墨并被加速冲散。关键取舍有两条：① 求导步长必须远小于噪声最小波长，早期用 0.15 格导致散度分布严重偏斜（83% 为正），几乎全画不出来，改成 0.01 格才恢复对称；② 场必须做成**周期性的**（lattice 大小与画布像素一一对应、下标按模回绕），否则环面环绕会在接缝处振荡出亮线——对边场角差实测 0.00000000 |
+2026-11-11 | https://hn.algolia.com/api/v1/search?query=self-organized%20criticality%20sandpile, https://hn.algolia.com/api/v1/search?query=sandpile%20cellular%20automaton | BTW 沙堆：高度 ≥ 4 就向四邻各分一粒，分形堆与幂律崩塌都是涌现的 | 定题「沙堆临界」补完涌现图案系列：落沙玩具遍地都是，但都是「沙粒下落堆积」的解压玩具，没有可推演结构。本作做统计物理的 BTW 模型，核心命题是**可验证的幂律**——单粒投放 6 万波后平均高度 2.111、崩塌规模分布 log2 分桶单调下降（2751→42）。开发中三个真坑：① 高度数组必须用 32 位整数，大崩塌时格子等待出栈期间会累积数百粒，Uint8Array 按模 256 回绕会凭空吞沙（实测丢 512 粒并破坏中心堆对称性）；② 连续投放会让多次崩塌合并成一次「巨崩塌」，直方图退化成 U 形假幂律，必须改成「栈空才投下一波」；③ 堆在生长的瞬态必须排除，否则小崩塌那端被瞬态污染，分布变形

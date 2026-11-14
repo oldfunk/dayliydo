@@ -35,6 +35,7 @@
 | Langton 蚂蚁 · 规则涌现 | [langtons-ant](langtons-ant/) | Turmite 可编辑规则表，highway 自发涌现，规则编码可分享 |
 | 流线仪 · 噪声场寻路 | [flow-field-ink](flow-field-ink/) | 周期性噪声流场 + 散度凭证：只在汇聚区落笔，源区断墨并被冲散，环面无缝 |
 | 沙堆临界 · 自组织临界沙盘 | [sandpile-criticality](sandpile-criticality/) | BTW 沙堆：栈驱动崩塌 + 统计预热 + 单粒投放协议，崩塌规模分布长出教科书式幂律 |
+| 同步相变 · 序参量 | [kuramoto-sync](kuramoto-sync/) | Kuramoto 振子：解析临界 Kc=2γ 可扫描验证，双峰簇同步 + 拓扑对比（纯环 vs 小世界） |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。

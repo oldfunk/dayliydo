@@ -9,13 +9,13 @@ const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const m = html.match(/\/\* MODEL-BEGIN \*\/([\s\S]*?)\/\* MODEL-END \*\//);
 if (!m) { console.error('未找到 MODEL-BEGIN/END 标记'); process.exit(1); }
 
-const ctx = { Math, Int8Array, Int32Array, Uint8Array, Float64Array, console, Date };
-vm.createContext(ctx);
-vm.runInContext(m[1], ctx);
-const PercolationGrid = ctx.PercolationGrid;
-const PC = ctx.PC_SITE;
-const DF = ctx.EXP_DF;
-const TAU = ctx.EXP_TAU;
+/* 用 runInThisContext 让模型跑在与网页相同的普通上下文，
+   否则 vm 隔离对象的属性访问会慢一个量级，既拖慢测试又测不准真实性能。 */
+vm.runInThisContext(m[1]);
+const PercolationGrid = globalThis.PercolationGrid;
+const PC = globalThis.PC_SITE;
+const DF = globalThis.EXP_DF;
+const TAU = globalThis.EXP_TAU;
 
 let pass = 0, fail = 0;
 const fails = [];

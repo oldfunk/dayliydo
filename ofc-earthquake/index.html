@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OFC 地震 · 自组织临界 | dayliydo</title>
+<style>
+  :root{
+    --bg:#0b0f14;
+    --panel:#121821;
+    --panel2:#0e141c;
+    --line:#1e2733;
+    --txt:#e6edf3;
+    --dim:#8b9bb0;
+    --accent:#7c9cff;
+    --good:#5fd18a;
+    --warn:#ff7b72;
+    --amber:#f0a848;
+    --cyan:#35c4dc;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--txt);
+    font:14px/1.55 -apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  header{
+    padding:16px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px;
+    background:linear-gradient(180deg,#0e141c,#0b0f14);
+  }
+  header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.3px}
+  header h1 .en{color:var(--dim);font-weight:400;font-size:12px;margin-left:8px;letter-spacing:.6px}
+  header .sub{color:var(--dim);font-size:12.5px;max-width:78ch}
+  header .tag{
+    margin-left:auto;font-size:11.5px;color:var(--dim);
+    border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--panel2);
+  }
+  main{
+    display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:16px;
+    padding:16px 22px 26px;align-items:start;
+  }
+  @media (max-width:940px){ main{grid-template-columns:1fr} }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h2{
+    font-size:12px;margin:0 0 10px;color:var(--dim);font-weight:600;
+    letter-spacing:.8px;text-transform:uppercase;
+  }
+  #stageWrap{position:relative;line-height:0}
+  #stage{
+    width:100%;height:auto;display:block;border-radius:8px;background:#05080c;
+    image-rendering:pixelated;cursor:crosshair;
+  }
+  #stageHint{
+    position:absolute;left:10px;bottom:8px;font-size:11px;color:#c9d6e5;
+    background:rgba(6,10,15,.62);padding:2px 8px;border-radius:6px;line-height:1.5;
+    pointer-events:none;
+  }
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--dim)}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  canvas.chart{width:100%;height:182px;display:block;margin-top:4px}
+  canvas.slim{width:100%;height:150px;display:block;margin-top:4px}
+  .chartNote{font-size:11.5px;color:var(--dim);margin-top:8px;line-height:1.6}
+  .chartNote code{color:var(--txt);background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:11px}
+  .ctl{margin-bottom:13px}
+  .ctl label{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--dim);margin-bottom:5px}
+  .ctl label b{color:var(--txt);font-weight:600;font-variant-numeric:tabular-nums}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--line);border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--accent);
+    margin-top:-5.5px;border:2px solid #0b0f14;box-shadow:0 0 0 1px var(--accent);
+  }
+  input[type=range]::-moz-range-track{height:4px;background:var(--line);border-radius:2px}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--accent);border:2px solid #0b0f14}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  select,button{
+    font:inherit;font-size:12.5px;color:var(--txt);background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer;
+  }
+  select{width:100%}
+  button:hover{border-color:var(--accent);color:#fff}
+  button:active{transform:translateY(1px)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#08111f;font-weight:650}
+  button.primary:hover{filter:brightness(1.08);color:#08111f}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .btnGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .stat .k{font-size:11px;color:var(--dim);letter-spacing:.3px}
+  .stat .v{font-size:16px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px}
+  .stat .v.small{font-size:13px}
+  .stat.wide{grid-column:span 2}
+  #prog{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:10px;border:1px solid var(--line)}
+  #progBar{height:100%;width:0%;background:var(--accent);transition:width .1s linear}
+  .note{font-size:11.5px;color:var(--dim);line-height:1.65;margin-top:10px}
+  .note code{color:var(--txt);background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:11px}
+  .kbd{font-size:11px;color:var(--dim);margin-top:10px;line-height:1.9}
+  .kbd kbd{
+    background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;
+    border-radius:5px;padding:1px 6px;font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--txt);
+  }
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;
+    border:1px solid var(--line);background:var(--panel2);color:var(--dim)}
+  .pill.on{color:#0b1a12;background:var(--good);border-color:var(--good);font-weight:650}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .28s ease-out;z-index:50}
+  #toast{
+    position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-8px);
+    background:var(--panel);border:1px solid var(--accent);border-radius:10px;
+    padding:9px 16px;font-size:13px;color:var(--txt);opacity:0;pointer-events:none;
+    transition:opacity .25s,transform .25s;z-index:60;max-width:88vw;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header>
+  <h1>OFC 地震 · 自组织临界<span class="en">OLAMI–FEDER–CHRISTENSEN</span></h1>
+  <span class="sub">二维断层上的弹簧-块体模型：无限慢的加载把应力一点点推高，块体只在超过阈值时突然滑动并把力甩给四个邻居。慢拖与急滑之间，地震自己长出了无标度的规模分布。</span>
+  <span class="tag">12 月主题「临界现象 · 相变」第 4 件</span>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <h2>断层剖面 · 应力场（暖色＝接近阈值，红闪＝正在滑动）</h2>
+      <div id="stageWrap">
+        <canvas id="stage" width="96" height="96"></canvas>
+        <div id="stageHint">点击/拖动＋Shift＝注水抬应力 · 空格＝手动主震</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#101722;border:1px solid #223041"></i>低应力</span>
+        <span><i style="background:#2f5fa8"></i>中等</span>
+        <span><i style="background:#ffb03a"></i>接近阈值</span>
+        <span><i style="background:#ff5a4e"></i>正在滑动</span>
+        <span id="loadingPill" class="pill">—</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>应力时间序列</h2>
+      <canvas id="chartStress" class="slim" width="640" height="150"></canvas>
+      <div class="chartNote">
+        蓝线＝系统总应力（每次地震泄掉一截）；绿线＝其平均值；红点＝发生地震的时刻。
+        加载越慢，两次地震之间的应力尖峰越高、间隔越长——这是 OFC 全部时间结构的来源。
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>地震规模分布 — 古腾堡–里特</h2>
+      <canvas id="chartGR" class="chart" width="640" height="182"></canvas>
+      <div class="chartNote" id="grNote">
+        横轴 log2(同震滑动格数 s)，纵轴 log10(累计频次 N(s))，斜率 = −b。真实地震目录 b ≈ 1，
+        二维 OFC 通常给出 b ≈ 0.6–1.0。虚线是过最大规模的 b=1 参考线；小 s 端受离散化影响偏离，不拿它声称验证了 b。
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>控制</h2>
+
+      <div class="ctl">
+        <label>加载速率 v（每步注入 / 格）<b id="vRate">1.0×10⁻³</b></label>
+        <input id="rate" type="range" min="-4" max="-1.5" step="0.1" value="-3">
+      </div>
+
+      <div class="ctl">
+        <label>耗散 1−α（每次滑动损失的比例）<b id="vAlpha">0.70</b></label>
+        <input id="alpha" type="range" min="0.5" max="0.98" step="0.02" value="0.7">
+      </div>
+
+      <div class="ctl">
+        <label>边长 L（格）<b id="vL">96</b></label>
+        <input id="LL" type="range" min="32" max="192" step="16" value="96">
+      </div>
+
+      <div class="ctl">
+        <label>运行速度（步/帧）<b id="vSpeed">1</b></label>
+        <input id="speed" type="range" min="1" max="40" step="1" value="1">
+      </div>
+
+      <div class="btnGrid">
+        <button id="btnQuake" class="primary">触发主震</button>
+        <button id="btnPause">暂停</button>
+        <button id="btnDrop">震后重记</button>
+        <button id="btnReset">重置</button>
+        <button id="btnSeed">随机种子</button>
+        <button id="btnPNG">导出 PNG</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="btnRun" class="primary" style="flex:1.4">跑 2000 次地震</button>
+        <button id="btnClear">清空统计</button>
+      </div>
+
+      <div id="prog"><div id="progBar"></div></div>
+      <div class="note" id="runStat">累计注入 0 · 地震 0 次</div>
+
+      <div class="stats">
+        <div class="stat wide"><div class="k">实测 b 值（累计频次，s≥32）</div><div class="v" id="sB">—</div></div>
+        <div class="stat"><div class="k">最大规模</div><div class="v small" id="sSmax">—</div></div>
+        <div class="stat"><div class="k">记录地震数</div><div class="v small" id="sQ">—</div></div>
+        <div class="stat"><div class="k">平均应力</div><div class="v small" id="sFbar">—</div></div>
+        <div class="stat"><div class="k">能量：输入 / 耗散</div><div class="v small" id="sEnergy">—</div></div>
+        <div class="stat"><div class="k">能量误差</div><div class="v small" id="sErr">—</div></div>
+      </div>
+
+      <div class="note" id="verdict">
+        b 由 log₂ 分桶累计频次的线性回归给出，虚线是真实地震目录的 <code>b=1</code> 参考。
+        自组织临界的标志是 <b>b 与加载速率无关</b>——把 v 从 10⁻² 调慢到 10⁻³，b 基本不动。
+        能量一栏核对 <code>输入 = 现存应力 + 耗散</code>（误差应远小于 1%）。
+      </div>
+
+      <div class="kbd">
+        <kbd>空格</kbd> 主震 · <kbd>P</kbd> 暂停 · <kbd>D</kbd> 震后重记 · <kbd>R</kbd> 重置 ·
+        <kbd>点击画布</kbd> 注水 · <kbd>Shift+点击</kbd> 挖低
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div id="flash"></div>
+<div id="toast"></div>
+
+<script>
+/* ===================== MODEL-BEGIN ===================== */
+/*
+ * Olami–Feder–Christensen (OFC) 地震模型，二维 L×L 四连价格点。
+ *
+ * 状态：每格一根弹簧，力 F ∈ [0,1]，F = 1 为滑动阈值。
+ * 加载：每一步给整片格子均匀注入 v（v ≪ 1，等效无限慢的板块拖拽）。
+ * 松弛（OFC 的标准规则）：某格超阈值时**整根弹簧泄掉**——自身清零，
+ *       四个邻居各得 α·F_old/4。α ∈ (0,1] 是守恒参数，(1−α) 的比例在滑动中
+ *       耗散掉（热、声、永久形变）。
+ *
+ * 为什么必须清零而不是「压回阈值 1」：若只把超出量 d = F−1 分出去而保留 1，
+ *       每格会永远贴在阈值上，任何扰动都会瞬间传遍全格——系统退化成
+ *       「全格齐滑」的极限环（实测 max 恒等于 N、b=0，没有任何尺度分离）。
+ *       清零让应力场有深有浅，级联才会在局部终止，幂律才长得出来。
+ *
+ * 同震事件 = 一次松弛级联所触及的格数。级联用显式栈迭代展开，marked[] 保证
+ * 每轮每格最多入栈一次，故栈容量 N 足够，时间复杂度 O(N)。
+ *
+ * 为什么必须是二维：一维 OFC 的级联规模随链长指数衰减，热力学极限下事件大小有界，
+ * 拿不到真正的无标度分布；二维及以上才出现幂律式的 Gutenberg–Richter 分布。
+ */
+function OFC(L, alpha){
+  L = L | 0;
+  if (L < 8) L = 8;
+  this.L = L;
+  this.N = L * L;
+  this.alpha = (+alpha <= 0 ? 0.01 : (+alpha > 1 ? 1 : +alpha));
+  this.f = new Float64Array(this.N);
+  this.stack = new Int32Array(this.N);
+  this.marked = new Uint8Array(this.N);
+  this.lastEvent = null;
+  this.reset(true);
+}
+
+OFC.prototype.reset = function(zero){
+  var f = this.f, N = this.N, i;
+  for (i = 0; i < N; i++) f[i] = zero ? 0 : 0.45;
+  this.lastEvent = null;
+};
+
+/*
+ * 一次加载—松弛循环。返回 { size, totalDrop, dissipated, affected, loaded }。
+ *
+ * 加载：整片格子每步均匀注入 v（v ≪ 1，等效无限慢的板块拖拽）。
+ *       平均应力以速率 v 上升，约 1/v 步后开始有格触顶。
+ * 松弛：把所有超阈值的格一次性入栈，逐个释放 d = F − 1 并按 α/4 分给四邻，
+ *       直到没有超阈值格为止。
+ *
+ * 因为松弛后应力场是非均匀的，触顶的总是局部最紧张的少数几格，所以事件是
+ * 局域级联而不是全格齐滑——这正是 OFC 能长出无标度分布的原因。
+ */
+OFC.prototype.event = function(v){
+  var L = this.L, N = this.N, f = this.f, stack = this.stack, marked = this.marked, i, j, r, c;
+  if (!(v > 0)) v = 0;
+  if (v > 1) v = 1;
+  var loaded = v * N;
+  for (i = 0; i < N; i++) f[i] += v;
+  var size = 0, total = 0, dissipated = 0;
+  var affected = null;
+  /* 反复「扫描所有超阈值格 → 松弛一轮」，直到没有超阈值格为止。
+   * 每轮内 marked[] 保证每格最多入栈一次，故单轮 O(N)；轮数有上限兜底。 */
+  var round = 0;
+  while (round++ < 64){
+    var top = 0;
+    marked.fill(0);   /* 每轮重新标记，否则上一轮的标记会让新超阈值的格永远松弛不掉 */
+    for (i = 0; i < N; i++){
+      if (f[i] >= 1 && !marked[i]){ marked[i] = 1; stack[top++] = i; }
+    }
+    if (top === 0) break;
+    while (top > 0){
+      i = stack[--top];
+      var fo = f[i];
+      if (fo < 1) continue;
+      r = (i / L) | 0; c = i % L;
+      /* OFC 规则：整根弹簧泄掉，自身清零，α·F_old/4 分给每个存在的邻居。
+       * 边界格的邻居不足 4 个，分出去的比 α·F_old 少，差额也计入耗散。 */
+      f[i] = 0;
+      size++;
+      total += fo;
+      var given = 0;
+      if (r > 0){
+        j = i - L; var g = fo * this.alpha * 0.25; f[j] += g; given += g;
+        if (!marked[j] && f[j] >= 1){ marked[j] = 1; stack[top++] = j; }
+      }
+      if (r < L - 1){
+        j = i + L; var g2 = fo * this.alpha * 0.25; f[j] += g2; given += g2;
+        if (!marked[j] && f[j] >= 1){ marked[j] = 1; stack[top++] = j; }
+      }
+      if (c > 0){
+        j = i - 1; var g3 = fo * this.alpha * 0.25; f[j] += g3; given += g3;
+        if (!marked[j] && f[j] >= 1){ marked[j] = 1; stack[top++] = j; }
+      }
+      if (c < L - 1){
+        j = i + 1; var g4 = fo * this.alpha * 0.25; f[j] += g4; given += g4;
+        if (!marked[j] && f[j] >= 1){ marked[j] = 1; stack[top++] = j; }
+      }
+      dissipated += fo - given;
+      if (!affected) affected = [];
+      affected.push(i);
+    }
+  }
+  marked.fill(0);
+  this.lastEvent = { size: size, totalDrop: total, dissipated: dissipated,
+                     affected: affected, loaded: loaded };
+  return { size: size, totalDrop: total, dissipated: dissipated,
+           affected: affected, loaded: loaded };
+};
+
+/* 交互用的局部推压：把某格抬到阈值以上一个余量（不立即松弛，交给 event()） */
+OFC.prototype.injectAt = function(idx, amount){
+  if (idx < 0 || idx >= this.N) return;
+  this.f[idx] += amount;
+};
+
+OFC.prototype.hasUnstable = function(){
+  var f = this.f, N = this.N;
+  for (var i = 0; i < N; i++) if (f[i] >= 1) return true;
+  return false;
+};
+
+OFC.prototype.totalForce = function(){
+  var s = 0, f = this.f, N = this.N;
+  for (var i = 0; i < N; i++) s += f[i];
+  return s;
+};
+
+OFC.prototype.meanForce = function(){ return this.totalForce() / this.N; };
+
+/* ---- 确定性 PRNG ---- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+/* MODEL-END */
+
+/* ===================== 统计工具 ===================== */
+function histLog2(sizes, cap){
+  var m = 0, i;
+  for (i = 0; i < sizes.length; i++) if (sizes[i] > m) m = sizes[i];
+  var bins = Math.max(1, Math.ceil(Math.log2(Math.max(2, Math.min(m, cap || 8192)))));
+  var h = new Float64Array(bins + 1);
+  for (i = 0; i < sizes.length; i++){
+    if (sizes[i] <= 0) continue;
+    var b = Math.floor(Math.log2(sizes[i]));
+    if (b > bins) b = bins;
+    h[b]++;
+  }
+  return { h: h, bins: bins, max: m };
+}
+
+/* 累计频次 N(s) = #{规模 >= 2^b} */
+function cumulative(hist, bins){
+  var cum = new Float64Array(bins + 1);
+  var acc = 0, b;
+  for (b = bins; b >= 0; b--){ acc += hist[b]; cum[b] = acc; }
+  return cum;
+}
+
+/* 最小二乘直线拟合 y = slope*x + intercept */
+function fitLine(xs, ys){
+  var n = xs.length;
+  if (n < 2) return null;
+  var sx = 0, sy = 0, sxx = 0, sxy = 0, i;
+  for (i = 0; i < n; i++){ sx += xs[i]; sy += ys[i]; sxx += xs[i] * xs[i]; sxy += xs[i] * ys[i]; }
+  var den = n * sxx - sx * sx;
+  if (Math.abs(den) < 1e-12) return null;
+  var slope = (n * sxy - sx * sy) / den;
+  return { slope: slope, intercept: (sy - slope * sx) / n };
+}
+</script>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var CAP = 8192;
+
+  /* ---------- 状态 ---------- */
+  var state = {
+    L: 96, alpha: 0.3, rate: 1e-3, speed: 1,
+    seed: 20261125,
+    paused: false,
+    running: false,
+    steps: 0,
+    quakes: [],        /* 每次事件的规模 */
+    drops: [],         /* 每次事件的总应力降 */
+    stressHist: [],    /* {s, e} */
+    sinceDrop: 0,
+    hot: null,         /* {map, t} 正在滑动的高亮 */
+    injected: 0,       /* 累计注入力 */
+    dissipated: 0,     /* 累计耗散力 */
+    initialForce: 0    /* 统计起点的现存应力 */
+  };
+  var model = new OFC(state.L, state.alpha);
+  var rng = mulberry32(state.seed);
+
+  /* ---------- 画布 ---------- */
+  var stage = $('stage'), sctx = stage.getContext('2d');
+  var off = document.createElement('canvas'), octx = off.getContext('2d');
+  var img, data;
+
+  function resizeStage(){
+    var L = state.L;
+    stage.width = L; stage.height = L;
+    off.width = L; off.height = L;
+    img = octx.createImageData(L, L);
+    data = img.data;
+  }
+
+  /* 应力 → 颜色：深蓝(0) → 青(0.4) → 琥珀(0.8) → 近白(1) */
+  function ramp(t){
+    t = t < 0 ? 0 : (t > 1 ? 1 : t);
+    var stops = [
+      [13, 20, 31],
+      [28, 62, 112],
+      [47, 95, 168],
+      [255, 176, 58],
+      [255, 242, 220]
+    ];
+    var x = t * (stops.length - 1);
+    var i = Math.floor(x), f = x - i;
+    if (i >= stops.length - 1){ i = stops.length - 2; f = 1; }
+    var a = stops[i], b = stops[i + 1];
+    return [Math.round(a[0] + (b[0] - a[0]) * f),
+            Math.round(a[1] + (b[1] - a[1]) * f),
+            Math.round(a[2] + (b[2] - a[2]) * f)];
+  }
+
+  function paint(){
+    var L = state.L, N = model.N, f = model.f, d = data, i, k;
+    var hot = null;
+    if (state.hot && performance.now() - state.hot.t < 200) hot = state.hot.map;
+    for (i = 0; i < N; i++){
+      var col = (hot && hot[i]) ? [255, 92, 78] : ramp(f[i]);
+      k = i * 4;
+      d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    sctx.imageSmoothingEnabled = false;
+    sctx.clearRect(0, 0, stage.width, stage.height);
+    sctx.drawImage(off, 0, 0, stage.width, stage.height);
+  }
+
+  /* ---------- 图表工具 ---------- */
+  function fitCanvas(cv){
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
+    var W = Math.round(w * dpr), H = Math.round(h * dpr);
+    if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: w, h: h };
+  }
+  var MONO = '10px ui-monospace,Menlo,Consolas,monospace';
+
+  function axes(ctx, x0, x1, y0, y1, xticks, yticks, w, h){
+    ctx.font = MONO; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#1e2733'; ctx.fillStyle = '#8b9bb0';
+    var i;
+    for (i = 0; i < xticks.length; i++){
+      ctx.beginPath(); ctx.moveTo(xticks[i].x, y0); ctx.lineTo(xticks[i].x, y1); ctx.stroke();
+      ctx.fillText(xticks[i].label, xticks[i].x - 12, h - 8);
+    }
+    for (i = 0; i < yticks.length; i++){
+      ctx.beginPath(); ctx.moveTo(x0, yticks[i].y); ctx.lineTo(x1, yticks[i].y); ctx.stroke();
+      ctx.fillText(yticks[i].label, 6, yticks[i].y + 3);
+    }
+  }
+
+  /* ---------- 图 1：应力时间序列 ---------- */
+  var cvS = $('chartStress');
+  function drawStress(){
+    var f = fitCanvas(cvS), ctx = f.ctx, w = f.w, h = f.h;
+    ctx.clearRect(0, 0, w, h);
+    var x0 = 40, x1 = w - 14, y0 = 12, y1 = h - 24;
+    var H = state.stressHist, n = H.length;
+    var mx = 0, mean = 0, i;
+    for (i = 0; i < n; i++){ if (H[i].s > mx) mx = H[i].s; mean += H[i].s; }
+    mean = n ? mean / n : 0;
+    var yMax = Math.max(1.2, mx * 1.06);
+    function X(k){ return x0 + (n <= 1 ? 0 : k / (n - 1)) * (x1 - x0); }
+    function Y(v){ return y1 - (v / yMax) * (y1 - y0); }
+    var xt = [], yt = [], v, k;
+    for (k = 0; k <= 4; k++) xt.push({ x: x0 + k / 4 * (x1 - x0), label: String(n ? Math.round(n * k / 4) : 0) });
+    var stepV = yMax > 6 ? 2 : 0.5;
+    for (v = 0; v <= yMax + 1e-9; v += stepV) yt.push({ y: Y(v), label: v.toFixed(1) });
+    axes(ctx, x0, x1, y0, y1, xt, yt, w, h);
+    ctx.strokeStyle = 'rgba(95,209,138,.7)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(x0, Y(mean)); ctx.lineTo(x1, Y(mean)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#5fd18a';
+    ctx.fillText('均值 ' + mean.toFixed(2), x1 - 92, Y(mean) - 5);
+    if (n > 1){
+      ctx.strokeStyle = '#35c4dc'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (i = 0; i < n; i++){ var x = X(i), y = Y(H[i].s); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      ctx.stroke();
+      ctx.fillStyle = '#ff7b72';
+      for (i = 0; i < n; i++) if (H[i].e > 0) ctx.fillRect(X(i) - 1, Y(H[i].s) - 1, 2, 2);
+    }
+  }
+
+  /* ---------- 图 2：Gutenberg–Richter ---------- */
+  var cvG = $('chartGR');
+  function drawGR(){
+    var f = fitCanvas(cvG), ctx = f.ctx, w = f.w, h = f.h;
+    ctx.clearRect(0, 0, w, h);
+    var x0 = 42, x1 = w - 16, y0 = 12, y1 = h - 26;
+    var sizes = state.quakes;
+    var H = histLog2(sizes, CAP), bins = H.bins, hist = H.h;
+    var cum = cumulative(hist, bins);
+    var log2cap = Math.log2(CAP);
+    function X(b){ return x0 + (b / log2cap) * (x1 - x0); }
+    var cmax = 0, b;
+    for (b = 0; b <= bins; b++) if (cum[b] > cmax) cmax = cum[b];
+    var yLo = 0.4, yHi = Math.pow(10, Math.max(0, Math.ceil(Math.log10(Math.max(2, cmax)))));
+    function Y(c){
+      var lo = Math.log10(yLo), hi = Math.log10(yHi);
+      return y1 - ((Math.log10(Math.max(c, yLo)) - lo) / (hi - lo)) * (y1 - y0);
+    }
+    var xt = [], yt = [], e;
+    for (b = 0; b <= log2cap; b += 2) xt.push({ x: X(b), label: String(Math.pow(2, b)) });
+    for (e = 0; e <= Math.log10(yHi) + 1e-9; e++) yt.push({ y: Y(Math.pow(10, e)), label: String(Math.pow(10, e)) });
+    axes(ctx, x0, x1, y0, y1, xt, yt, w, h);
+    /* 数据竖线 */
+    ctx.strokeStyle = '#f0a848'; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (b = 0; b <= bins; b++){
+      if (cum[b] <= 0) continue;
+      ctx.moveTo(X(b), y1); ctx.lineTo(X(b), Y(cum[b]));
+    }
+    ctx.stroke();
+    /* 过最大规模的 b=1 参考线 */
+    var topB = -1;
+    for (b = 0; b <= bins; b++) if (cum[b] > 0) topB = b;
+    if (topB > 0){
+      ctx.strokeStyle = 'rgba(124,156,255,.75)';
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(X(topB), Y(cum[topB]));
+      ctx.lineTo(X(log2cap), Y(cum[topB] * Math.pow(CAP / Math.pow(2, topB), -1)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#7c9cff';
+      ctx.fillText('b=1', X(log2cap) - 32, Y(cum[topB] * Math.pow(CAP / Math.pow(2, topB), -1)) + 13);
+    }
+    /* 拟合（s >= 32 且累计 >= 2） */
+    var xs = [], ys = [], bmin = 5;
+    for (b = bmin; b <= bins; b++) if (cum[b] >= 2){ xs.push(b); ys.push(Math.log10(cum[b])); }
+    var fit = fitLine(xs, ys);
+    if (fit){
+      ctx.strokeStyle = '#5fd18a'; ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      var xa = xs[0], xb = xs[xs.length - 1];
+      ctx.moveTo(X(xa), Y(Math.pow(10, fit.slope * xa + fit.intercept)));
+      ctx.lineTo(X(xb), Y(Math.pow(10, fit.slope * xb + fit.intercept)));
+      ctx.stroke();
+      ctx.fillStyle = '#5fd18a';
+      ctx.fillText('b=' + (-fit.slope).toFixed(2), X(xb) - 48, Y(Math.pow(10, fit.slope * xb + fit.intercept)) - 6);
+    }
+    var note = '样本 ' + sizes.length + ' 次地震 · 最大规模 ' + H.max;
+    note += fit ? ' · 实测 b = ' + (-fit.slope).toFixed(2) + '（s ≥ 32）' : ' · 样本不足';
+    note += '。真实地震目录 b ≈ 1；二维 OFC 因空间关联而略低于 1。小 s 端受离散化影响偏离，不作为验证依据。';
+    $('grNote').textContent = note;
+    return fit ? -fit.slope : null;
+  }
+
+  /* ---------- 统计刷新 ---------- */
+  var sB = $('sB'), sSmax = $('sSmax'), sQ = $('sQ'), sFbar = $('sFbar'),
+      sEnergy = $('sEnergy'), sErr = $('sErr'), loadingPill = $('loadingPill'),
+      runStat = $('runStat');
+
+  function refreshStats(){
+    var fit = drawGR();
+    var sizes = state.quakes, mx = 0, i;
+    for (i = 0; i < sizes.length; i++) if (sizes[i] > mx) mx = sizes[i];
+    sSmax.textContent = sizes.length ? String(mx) : '—';
+    sQ.textContent = String(sizes.length);
+    sFbar.textContent = model.meanForce().toFixed(3);
+    sB.textContent = fit !== null ? fit.toFixed(2) : '—';
+    var now = model.totalForce();
+    var expect = state.initialForce + state.injected - state.dissipated;
+    sEnergy.textContent = state.injected.toFixed(1) + ' / ' + state.dissipated.toFixed(1);
+    var rel = Math.abs(expect - now) / Math.max(1e-9, Math.abs(expect));
+    sErr.textContent = (rel * 100).toFixed(4) + '%';
+    runStat.textContent = '累计注入 ' + state.steps + ' 步 · 地震 ' + sizes.length + ' 次' +
+      (state.running ? ' · 批处理中' : '');
+  }
+
+  /* ---------- 单步 ---------- */
+  var STRESS_CAP = 800;
+  function recordEvent(ev){
+    if (ev.size <= 0) return;
+    state.quakes.push(ev.size);
+    state.drops.push(ev.totalDrop);
+    state.dissipated += ev.dissipated;
+    if (state.quakes.length > 300000) state.quakes.splice(0, 150000);
+    if (state.drops.length > 60000) state.drops.splice(0, 30000);
+    var map = {};
+    var aff = ev.affected, i;
+    if (aff) for (i = 0; i < aff.length; i++) map[aff[i]] = 1;
+    state.hot = { map: map, t: performance.now() };
+  }
+  function pushStress(beforeMean, size){
+    if (state.stressHist.length >= STRESS_CAP) state.stressHist.shift();
+    state.stressHist.push({ s: beforeMean, e: size });
+  }
+  function step(){
+    var before = model.totalForce();
+    var ev = model.event(state.rate);
+    state.steps++;
+    state.sinceDrop++;
+    state.injected += ev.loaded;
+    recordEvent(ev);
+    pushStress(before / model.N, ev.size);
+    if (ev.size >= state.L * 0.6) flash();
+    return ev.size;
+  }
+
+  /* 手动主震：把当前最紧张的格推过阈值，制造一次确定性触发 */
+  function kick(){
+    var f = model.f, N = model.N, idx = 0, best = -1, i;
+    for (i = 0; i < N; i++) if (f[i] > best){ best = f[i]; idx = i; }
+    model.injectAt(idx, Math.max(0, 1 - best) + 0.05);
+    var before = model.totalForce();
+    var ev = model.event(0);
+    state.steps++;
+    state.injected += 0;
+    recordEvent(ev);
+    pushStress(before / model.N, ev.size);
+    flash();
+    return ev.size;
+  }
+
+  function flash(){
+    var el = $('flash');
+    el.style.transition = 'none';
+    el.style.opacity = String(0.14 + Math.random() * 0.12);
+    requestAnimationFrame(function(){
+      el.style.transition = 'opacity .3s ease-out';
+      el.style.opacity = '0';
+    });
+  }
+
+  var toastTimer = null;
+  function toast(msg){
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+  }
+
+  /* ---------- 主循环 ---------- */
+  function loop(){
+    if (!state.paused){
+      var k = state.speed;
+      while (k-- > 0){
+        step();
+        if (state.hot && performance.now() - state.hot.t < 60) break;
+      }
+      paint();
+      if ((state.steps & 3) === 0) drawStress();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- 批处理 ---------- */
+  var btnRun = $('btnRun'), progBar = $('progBar');
+  function batch(events){
+    if (state.running) return;
+    state.running = true;
+    btnRun.disabled = true;
+    var done = 0, target = events, guard = events * 200;
+    function chunk(){
+      var per = Math.min(guard, 400);
+      var i;
+      for (i = 0; i < per && done < target; i++){
+        var s = step();
+        guard--;
+        if (s > 0) done++;
+      }
+      progBar.style.width = (done / target * 100).toFixed(1) + '%';
+      runStat.textContent = '批处理 ' + done + '/' + target + ' 次地震 · 已注入 ' + state.steps + ' 步';
+      if (done < target && guard > 0){ setTimeout(chunk, 0); return; }
+      state.running = false;
+      btnRun.disabled = false;
+      progBar.style.width = '100%';
+      paint(); refreshStats(); drawStress();
+      toast('跑完 ' + done + ' 次地震：b=' + $('sB').textContent + ' · 最大规模 ' + $('sSmax').textContent);
+    }
+    chunk();
+  }
+
+  /* ---------- 控件 ---------- */
+  function sup(n){
+    var map = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+                '5': '⁵', '6': '⁶', '7': '⁷' };
+    var s = String(n), out = '';
+    for (var i = 0; i < s.length; i++) out += map[s[i]] === undefined ? s[i] : map[s[i]];
+    return out;
+  }
+  function fmtRate(v){
+    var e = Math.round(Math.log10(v));
+    return (v / Math.pow(10, e)).toFixed(2) + '×10' + sup(e);
+  }
+
+  $('rate').addEventListener('input', function(e){
+    state.rate = Math.pow(10, parseFloat(e.target.value));
+    $('vRate').textContent = fmtRate(state.rate);
+  });
+  $('alpha').addEventListener('input', function(e){
+    var diss = parseFloat(e.target.value);
+    state.alpha = 1 - diss;
+    model.alpha = state.alpha;
+    $('vAlpha').textContent = diss.toFixed(2);
+  });
+  $('LL').addEventListener('input', function(e){
+    var L = parseInt(e.target.value, 10);
+    $('vL').textContent = String(L);
+    state.L = L;
+    model = new OFC(L, state.alpha);
+    resizeStage();
+    resetStats();
+    paint();
+  });
+  $('speed').addEventListener('input', function(e){
+    state.speed = parseInt(e.target.value, 10);
+    $('vSpeed').textContent = String(state.speed);
+  });
+
+  function resetStats(){
+    state.quakes = []; state.drops = []; state.stressHist = [];
+    state.steps = 0; state.sinceDrop = 0;
+    state.injected = 0; state.dissipated = 0;
+    state.initialForce = model.totalForce();
+    refreshStats(); drawStress();
+  }
+
+  $('btnQuake').addEventListener('click', function(){ kick(); paint(); drawStress(); refreshStats(); });
+  $('btnPause').addEventListener('click', function(){
+    state.paused = !state.paused;
+    $('btnPause').textContent = state.paused ? '继续' : '暂停';
+  });
+  $('btnDrop').addEventListener('click', function(){
+    toast('已重置记录起点（距上次 ' + state.steps + ' 步注入）');
+    state.sinceDrop = 0;
+  });
+  $('btnClear').addEventListener('click', function(){
+    resetStats();
+    progBar.style.width = '0%';
+    toast('统计已清空（应力场保留）');
+  });
+  $('btnReset').addEventListener('click', function(){
+    model.reset(true);
+    state.hot = null;
+    resetStats();
+    paint();
+    toast('已重置：全部应力清零');
+  });
+  $('btnSeed').addEventListener('click', function(){
+    state.seed = (rng() * 0x7fffffff) | 0;
+    rng = mulberry32(state.seed);
+    model.reset(false);
+    state.hot = null;
+    resetStats();
+    paint();
+    toast('新种子 ' + state.seed);
+  });
+  $('btnRun').addEventListener('click', function(){ batch(2000); });
+  $('btnPNG').addEventListener('click', function(){
+    var out = document.createElement('canvas');
+    out.width = stage.width + 8; out.height = stage.height + 8;
+    var c = out.getContext('2d');
+    c.fillStyle = '#0b0f14'; c.fillRect(0, 0, out.width, out.height);
+    c.drawImage(stage, 4, 4);
+    var a = document.createElement('a');
+    a.download = 'ofc-L' + state.L + '.png';
+    a.href = out.toDataURL('image/png');
+    a.click();
+  });
+
+  /* ---------- 画布交互 ---------- */
+  function cellFromEvent(e){
+    var rect = stage.getBoundingClientRect();
+    var L = state.L;
+    var c = Math.floor((e.clientX - rect.left) / rect.width * L);
+    var r = Math.floor((e.clientY - rect.top) / rect.height * L);
+    if (c < 0) c = 0; if (c >= L) c = L - 1;
+    if (r < 0) r = 0; if (r >= L) r = L - 1;
+    return r * L + c;
+  }
+  var painting = false, paintMode = 'up';
+  stage.addEventListener('pointerdown', function(e){
+    paintMode = e.shiftKey ? 'down' : 'up';
+    painting = true;
+    applyPaint(cellFromEvent(e));
+    if (e.pointerId !== undefined && stage.setPointerCapture){
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+  });
+  stage.addEventListener('pointermove', function(e){ if (painting) applyPaint(cellFromEvent(e)); });
+  stage.addEventListener('pointerup', function(){ painting = false; });
+  stage.addEventListener('pointercancel', function(){ painting = false; });
+  function applyPaint(idx){
+    if (paintMode === 'up'){
+      model.injectAt(idx, 0.15);
+      state.injected += 0.15;
+    } else {
+      model.f[idx] *= 0.8;
+    }
+    var before = model.totalForce();
+    var ev = model.event(0);
+    state.steps++;
+    recordEvent(ev);
+    pushStress(before / model.N, ev.size);
+    paint();
+    sFbar.textContent = model.meanForce().toFixed(3);
+    loadingPill.textContent = model.hasUnstable() ? '暂态未松弛' : '稳定';
+    loadingPill.className = 'pill' + (model.hasUnstable() ? '' : ' on');
+  }
+
+  /* ---------- 键盘 ---------- */
+  document.addEventListener('keydown', function(e){
+    if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.code === 'Space'){ e.preventDefault(); $('btnQuake').click(); }
+    else if (e.key === 'p' || e.key === 'P'){ $('btnPause').click(); }
+    else if (e.key === 'd' || e.key === 'D'){ $('btnDrop').click(); }
+    else if (e.key === 'r' || e.key === 'R'){ $('btnReset').click(); }
+  });
+
+  window.addEventListener('resize', function(){ drawStress(); drawGR(); });
+
+  /* ---------- 启动 ---------- */
+  resizeStage();
+  refreshStats();
+  paint();
+  updateLive();
+  requestAnimationFrame(loop);
+
+  function updateLive(){
+    loadingPill.textContent = model.hasUnstable() ? '暂态未松弛' : '稳定';
+    loadingPill.className = 'pill' + (model.hasUnstable() ? '' : ' on');
+  }
+})();
+</script>
+</body>
+</html>

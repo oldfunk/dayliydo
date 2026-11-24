@@ -21,7 +21,7 @@ neural-snow（神经雪 · 脉冲雪片）—— 放电沙盘里自己长雪晶�
 1. [x] kuramoto-sync（同步相变）—— 序参量 r + 解析临界耦合 Kc=2γ + 双峰簇同步 + 拓扑对比（纯环 vs 小世界）（11-15 完成，23 项无头断言全通过）
 2. [x] ising-domains（伊辛磁畴）—— Metropolis 蒙特卡洛 + 居里温度 + 最大连通畴序参量 + 外场破缺 + 升/降温磁滞（11-18 完成，24 项无头断言 + 23 项 UI 冒烟全通过）
 3. [x] percolation-threshold（渗流阈值）—— 团簇生长 + p_c 可验证 + 关联长度发散（11-22 完成，29 项无头断言 + 14 项 UI 冒烟全通过）
-4. ofc-earthquake（OFC 地震）—— 弹簧-块体自组织临界 + 古腾堡-里特定律
+4. [x] ofc-earthquake（OFC 地震）—— 弹簧-块体自组织临界 + 古腾堡-里特定律 b 值 + 加载速率无关性验证 + 能量账目闭合（11-25 完成，33 项无头断言 + 23 项 UI 冒烟全通过）
 
 联网调研来源：HN「Kuramoto Model for Synchronization」、templetwo.github.io/kuramoto-oscillators、kuramoto.dev、ising-model.vercel.app、nmk.wtf 临界渗流团簇。同类作品多为「调参数看动画」，差异化在于把临界线变成可解析预测、可扫描验证的凭证。
 

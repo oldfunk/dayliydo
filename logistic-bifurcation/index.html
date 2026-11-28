@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>混沌之门 · 倍周期分岔</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121a23; --panel2:#0e151d; --line:#233241;
+    --txt:#e6edf3; --muted:#8fa2b4; --cyan:#4fd1c5; --amber:#f6ad55;
+    --red:#f87171; --blue:#5aa9e6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:var(--cyan)}
+  .wrap{max-width:1200px;margin:0 auto;padding:26px 20px 60px}
+  header h1{margin:0 0 6px;font-size:26px;letter-spacing:.5px}
+  header h1 .tag{color:var(--cyan)}
+  header p{margin:0;color:var(--muted);font-size:14px}
+  .badges{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 22px}
+  .badge{background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:6px 14px;font-size:12px;color:var(--muted)}
+  .badge b{color:var(--amber);font-variant-numeric:tabular-nums;margin-left:6px}
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .card h2{margin:0 0 4px;font-size:15px;font-weight:600}
+  .card .sub{color:var(--muted);font-size:12px;margin:0 0 12px}
+  .cvwrap{position:relative;width:100%;background:var(--panel2);border-radius:10px;overflow:hidden}
+  canvas{display:block;width:100%;height:auto}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  label.lbl{font-size:12px;color:var(--muted);min-width:52px}
+  input[type=range]{flex:1;min-width:140px;accent-color:var(--cyan)}
+  .val{font-variant-numeric:tabular-nums;color:var(--cyan);font-size:13px;min-width:74px;text-align:right}
+  button{background:#1b2735;color:var(--txt);border:1px solid var(--line);border-radius:8px;
+    padding:6px 11px;font-size:12px;cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--cyan);color:var(--cyan)}
+  button.on{background:var(--cyan);color:#08211f;border-color:var(--cyan);font-weight:600}
+  .pills{display:flex;gap:6px;flex-wrap:wrap}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin-top:10px}
+  .kv .k{color:var(--muted)}
+  .kv .v{font-variant-numeric:tabular-nums;text-align:right}
+  .readout{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;
+    color:var(--muted);word-break:break-all;margin-top:8px;line-height:1.7}
+  .readout b{color:var(--amber);font-weight:400}
+  table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:5px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500}
+  td:first-child,th:first-child{text-align:left}
+  .hi{color:var(--amber)}
+  .note{font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.7}
+  .foot{margin-top:24px;color:var(--muted);font-size:12px;line-height:1.8}
+  .foot b{color:var(--cyan)}
+  .progress{height:3px;background:var(--line);border-radius:2px;margin-top:8px;overflow:hidden}
+  .progress i{display:block;height:100%;width:0;background:var(--cyan);transition:width .1s}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>混沌之门 · <span class="tag">倍周期分岔</span></h1>
+    <p>x<sub>n+1</sub> = r · x<sub>n</sub> · (1 − x<sub>n</sub>)。一条规则，一根滑杆，从秩序走到混沌——而且临界点可以亲手量出来。</p>
+  </header>
+
+  <div class="badges">
+    <span class="badge">费根鲍姆常数 δ <b id="bdDelta">测量中…</b></span>
+    <span class="badge">理论值 <b>4.669201609</b></span>
+    <span class="badge">混沌门槛 r∞ <b>3.569945672</b></span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>分岔图 · 吸引子的长相</h2>
+      <p class="sub">横轴 r，纵轴迭代稳定后的 x。每根亮线都是一条轨道；一分为二、二分为四，然后在 r≈3.5699 碎成混沌。拖拽画面可横向缩放，双击复位。</p>
+      <div class="cvwrap"><canvas id="bif" width="960" height="560"></canvas></div>
+      <div class="progress"><i id="prog"></i></div>
+      <div class="row">
+        <div class="pills" id="zoomPills">
+          <button data-zoom="2.8,4">全景</button>
+          <button data-zoom="3.40,3.57">倍周期区</button>
+          <button data-zoom="3.560,3.5715">临界点</button>
+          <button data-zoom="3.82,3.86">周期 3 窗口</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>蛛网 · 一次迭代怎么走</h2>
+      <p class="sub">抛物线是 f(x)，斜线是 y=x。从 x₀ 出发，竖直撞曲线、水平回斜线，一步步走出这条轨道的命运。</p>
+      <div class="cvwrap"><canvas id="cob" width="440" height="440"></canvas></div>
+      <div class="row">
+        <label class="lbl">r 值</label>
+        <input type="range" id="rSlider" min="2.80" max="4.00" step="0.00001" value="3.56990">
+        <span class="val" id="rVal">3.56990</span>
+      </div>
+      <div class="row">
+        <button id="playBtn" class="on">暂停蛛网</button>
+        <div class="pills" id="rPills">
+          <button data-r="3.2">周期 2</button>
+          <button data-r="3.5">周期 4</button>
+          <button data-r="3.55">周期 8</button>
+          <button data-r="3.566">周期 16</button>
+          <button data-r="3.56995">边缘</button>
+          <button data-r="3.83">周期 3</button>
+          <button data-r="4">全混沌</button>
+        </div>
+      </div>
+      <div class="kv">
+        <span class="k">吸引子周期</span><span class="v" id="periodOut">—</span>
+        <span class="k">李雅普诺夫指数 λ</span><span class="v" id="lyapOut">—</span>
+        <span class="k">λ 的判读</span><span class="v" id="lyapNote">—</span>
+      </div>
+      <div class="readout" id="orbitOut">轨道：—</div>
+    </div>
+
+    <div class="card">
+      <h2>李雅普诺夫指数 · 混沌的体温计</h2>
+      <p class="sub">λ = 相邻轨道每步的平均对数分离率。λ&lt;0 收敛到周期，λ&gt;0 就是混沌——它比肉眼看分岔图更早、更准。图中虚线为 λ=0。</p>
+      <div class="cvwrap"><canvas id="lyap" width="960" height="180"></canvas></div>
+      <p class="note">两个可复核的事实：λ 首次翻正的位置就是 r∞≈3.5699；r≈3.83 的周期 3 窗口会让它重新掉回负值——混沌里嵌着秩序的孤岛。</p>
+    </div>
+
+    <div class="card">
+      <h2>费根鲍姆 δ · 分岔间隔的普适比</h2>
+      <p class="sub">相邻两次分岔的间距之比，会收敛到同一个无理数 4.6692…——与映射的细节无关。下面这些 r 值不是查表贴上去的，是页面上现场解出来的。</p>
+      <table>
+        <thead><tr><th>分岔 n</th><th>周期 2<sup>n−1</sup>→2<sup>n</sup></th><th>r<sub>n</sub>（实测）</th><th>间距 Δ<sub>n−1</sub></th><th>δ 比值</th></tr></thead>
+        <tbody id="feigBody"><tr><td colspan="5">计算中…</td></tr></tbody>
+      </table>
+      <div class="cvwrap" style="margin-top:12px"><canvas id="conv" width="440" height="180"></canvas></div>
+      <p class="note">求法：对周期 p=2<sup>n−1</sup> 的轨道解 f<sup>p</sup>(x)=x（牛顿精修），再二分搜索其乘子 (f<sup>p</sup>)′ 降到 −1 的 r——那正是轨道失稳、一分为二的时刻。</p>
+      <div class="row"><button id="remeasure">重新实测 δ</button></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>怎么玩：</b>拖 r 滑杆或点预设，看蛛网从稳定点 → 来回两点 → 分岔 → 混沌；在分岔图上拖选一段 r 放大，肉眼数出加倍序列；再核对右边现场测出的 δ 是否逼近 4.6692。<br>
+    <b>为什么做这个：</b>「混沌」常被当成不可言说的乱。这件作品想证明：无序的门槛反而是整个系统里最可被精确测量的地方——误差 1e-8 的分岔点、单调收敛的普适常数，都藏在那条临界线上。<br>
+    纯单文件，零依赖零联网；双击 index.html 即可离线运行。
+  </div>
+</div>
+
+<script>
+/* MODEL-BEGIN */
+// ---- 纯数学模型：无 DOM / 无副作用，可被 node 无头自检直接抽取执行 ----
+const FEIGENBAUM_DELTA = 4.669201609102990;
+const R_INF = 3.569945672;
+
+// 各阶倍周期分岔点的搜索窗口（只用于给求根器定界，不是答案本身）
+const BIF_WINDOWS = {
+  2:[3.40,3.46], 3:[3.53,3.552], 4:[3.562,3.5655],
+  5:[3.5685,3.5690], 6:[3.56965,3.56975]
+};
+
+// 迭代种子：不能取临界点 0.5 —— r=4 时 0.5→1→0 会精确落进不动点，得到假结果
+const ORBIT_SEED = 0.3141592653589793;
+
+function logisticStep(x, r){ return r * x * (1 - x); }
+
+// f^p(x) 及其对 x 的导数 d(f^p)/dx，一次迭代同时算出
+function iterP(x0, r, p){
+  let x = x0, d = 1;
+  for (let i = 0; i < p; i++){
+    d *= r * (1 - 2 * x);
+    x = r * x * (1 - x);
+  }
+  return [x, d];
+}
+
+// 周期 p 轨道的乘子：先迭代落到吸引子，再用牛顿把 x 精修到 f^p(x)=x 的不动点
+function orbitMultiplier(r, p){
+  let x = ORBIT_SEED;
+  for (let i = 0; i < 3000; i++) x = r * x * (1 - x);
+  for (let it = 0; it < 50; it++){
+    const res = iterP(x, r, p);
+    const F = res[0] - x, Fp = res[1] - 1;
+    if (Math.abs(F) < 1e-14) break;
+    const step = F / Fp;
+    if (!isFinite(step) || Math.abs(step) > 0.05) break;  // 防止跳到别的周期轨道
+    x -= step;
+  }
+  return iterP(x, r, p)[1];
+}
+
+// 第 n 次倍周期分岔：乘子 (f^2^(n-1))' 恰好穿过 -1
+function findBifurcation(n){
+  if (n === 1) return 3;  // 不动点 2-r=-1 的解析解
+  const win = BIF_WINDOWS[n];
+  if (!win) return NaN;
+  const p = 1 << (n - 1);
+  let a = win[0], b = win[1];
+  const fa = orbitMultiplier(a, p) + 1;
+  const fb = orbitMultiplier(b, p) + 1;
+  if (fa * fb > 0) return NaN;
+  let faCur = fa;
+  for (let k = 0; k < 60; k++){
+    const mid = (a + b) / 2;
+    const fm = orbitMultiplier(mid, p) + 1;
+    if (faCur * fm <= 0) b = mid; else { a = mid; faCur = fm; }
+  }
+  return (a + b) / 2;
+}
+
+// 现场实测 r_1..r_6 与 δ 序列
+function computeFeigenbaum(){
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const rs = [];
+  for (let n = 1; n <= 6; n++) rs.push(findBifurcation(n));
+  const gaps = [], ratios = [];
+  for (let i = 1; i < rs.length; i++) gaps.push(rs[i] - rs[i - 1]);
+  for (let i = 1; i < gaps.length; i++) ratios.push(gaps[i - 1] / gaps[i]);
+  const last = ratios[ratios.length - 1];
+  const rInfEst = rs[rs.length - 1] + gaps[gaps.length - 1] / (last - 1);
+  const t1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  return { rs, gaps, ratios, rInfEst, elapsedMs: t1 - t0 };
+}
+
+// 李雅普诺夫指数：舍去暂态后的平均 ln|f'(x)|
+function lyapunov(r, transient, samples){
+  let x = ORBIT_SEED, s = 0;
+  for (let i = 0; i < transient; i++) x = r * x * (1 - x);
+  let n = 0;
+  for (let i = 0; i < samples; i++){
+    const d = Math.abs(r * (1 - 2 * x));
+    if (d > 1e-14) s += Math.log(d);
+    x = r * x * (1 - x);
+    n++;
+  }
+  return s / n;
+}
+
+// 吸引子周期判定（2 的幂），0 表示在采样精度内未见重复 = 混沌
+function detectPeriod(r){
+  let x = ORBIT_SEED;
+  for (let i = 0; i < 3000; i++) x = r * x * (1 - x);
+  const pts = [];
+  for (let i = 0; i < 128; i++){ x = r * x * (1 - x); pts.push(x); }
+  for (const p of [1,2,3,4,5,6,7,8,16,32,64]){
+    let ok = true;
+    for (let i = 0; i + p < pts.length; i++){
+      if (Math.abs(pts[i] - pts[i + p]) > 1e-8){ ok = false; break; }
+    }
+    if (ok) return p;
+  }
+  return 0;
+}
+
+globalThis.ChaosModel = {
+  FEIGENBAUM_DELTA, R_INF, ORBIT_SEED, BIF_WINDOWS, logisticStep, iterP,
+  orbitMultiplier, findBifurcation, computeFeigenbaum, lyapunov, detectPeriod
+};
+/* MODEL-END */
+
+'use strict';
+const M = globalThis.ChaosModel;
+const $ = id => document.getElementById(id);
+const S = { rMin:2.8, rMax:4.0, r:3.56990, playing:true, cobStep:0 };
+
+// ---------- 分岔图 ----------
+const bif = $('bif'), bctx = bif.getContext('2d', {willReadFrequently:true});
+const BW = bif.width, BH = bif.height;
+const counts = new Uint16Array(BW * BH);
+const img = bctx.createImageData(BW, BH);
+const palette = (() => {
+  const out = new Array(256);
+  for (let i = 0; i < 256; i++){
+    const t = i / 255;
+    let r,g,b;
+    if (t < 0.5){ const q = t/0.5; r=18+61*q; g=34+175*q; b=58+139*q; }
+    else { const q = (t-0.5)/0.5; r=79+176*q; g=209-19*q; b=197-107*q; }
+    const k = 0.45 + 0.55*Math.pow(t,0.6);
+    out[i] = [Math.round(r*k),Math.round(g*k),Math.round(b*k)];
+  }
+  return out;
+})();
+
+function drawBifOverlay(){
+  const toX = r => (r - S.rMin) / (S.rMax - S.rMin) * BW;
+  bctx.save();
+  bctx.setLineDash([4,5]); bctx.lineWidth = 1;
+  [3,3.449489743,3.544090350,3.564407270,3.568759420,3.569691609].forEach((r,i)=>{
+    const x = toX(r); if (x < 0 || x > BW) return;
+    bctx.strokeStyle = i===5 ? 'rgba(246,173,85,.85)' : 'rgba(143,162,180,.35)';
+    bctx.beginPath(); bctx.moveTo(x,0); bctx.lineTo(x,BH); bctx.stroke();
+    bctx.fillStyle = i===5 ? '#f6ad55' : '#8fa2b4';
+    bctx.font = '11px ui-monospace,monospace';
+    bctx.fillText(i===5 ? 'r∞' : 'r'+(i+1), x+4, 13);
+  });
+  const xr = toX(S.r);
+  if (xr >= 0 && xr <= BW){
+    bctx.setLineDash([]); bctx.strokeStyle = 'rgba(79,209,197,.9)'; bctx.lineWidth = 1.5;
+    bctx.beginPath(); bctx.moveTo(xr,0); bctx.lineTo(xr,BH); bctx.stroke();
+  }
+  bctx.restore();
+}
+
+function renderBifurcation(){
+  counts.fill(0);
+  const data = img.data;
+  for (let i = 0; i < data.length; i += 4){ data[i]=11; data[i+1]=15; data[i+2]=20; data[i+3]=255; }
+  const span = S.rMax - S.rMin;
+  let col = 0;
+  const BATCH = 20;
+  function frame(){
+    const end = Math.min(BW, col + BATCH);
+    for (let px = col; px < end; px++){
+      const r = S.rMin + (px + 0.5) / BW * span;
+      let x = M.ORBIT_SEED;
+      for (let i = 0; i < 400; i++) x = r * x * (1 - x);
+      for (let i = 0; i < 260; i++){
+        x = r * x * (1 - x);
+        const py = ((1 - x) * (BH - 1)) | 0;
+        if (py >= 0 && py < BH){
+          const idx = py * BW + px;
+          if (counts[idx] < 65535) counts[idx]++;
+        }
+      }
+      for (let py = 0; py < BH; py++){
+        const c = counts[py * BW + px];
+        const j = (py * BW + px) * 4;
+        if (c){ const colr = palette[Math.min(255,c)]; data[j]=colr[0]; data[j+1]=colr[1]; data[j+2]=colr[2]; }
+        else { data[j]=11; data[j+1]=15; data[j+2]=20; }
+      }
+    }
+    col = end;
+    bctx.putImageData(img, 0, 0);
+    drawBifOverlay();
+    $('prog').style.width = (col / BW * 100) + '%';
+    if (col < BW) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// 拖拽缩放
+let dragX = null;
+bif.addEventListener('mousedown', e => { dragX = e.offsetX / bif.clientWidth * BW; });
+bif.addEventListener('mouseup', e => {
+  if (dragX === null) return;
+  const x2 = e.offsetX / bif.clientWidth * BW;
+  dragX = null;
+  const lo = Math.min(dragX, x2), hi = Math.max(dragX, x2);
+  if (hi - lo < 20) return;
+  const span = S.rMax - S.rMin;
+  S.rMin = S.rMin + lo / BW * span;
+  S.rMax = S.rMin + (hi - lo) / BW * span;
+  renderBifurcation(); renderLyapunov();
+});
+bif.addEventListener('dblclick', () => { S.rMin=2.8; S.rMax=4.0; renderBifurcation(); renderLyapunov(); });
+
+// ---------- 李雅普诺夫曲线 ----------
+const lc = $('lyap'), lctx = lc.getContext('2d');
+const LW = lc.width, LH = lc.height;
+function renderLyapunov(){
+  lctx.clearRect(0,0,LW,LH);
+  lctx.fillStyle = '#0e151d'; lctx.fillRect(0,0,LW,LH);
+  const yOf = v => LH/2 - v * (LH/2 - 14) / 0.8;
+  // 0 线
+  lctx.strokeStyle = 'rgba(143,162,180,.5)'; lctx.setLineDash([5,5]); lctx.lineWidth = 1;
+  lctx.beginPath(); lctx.moveTo(0,yOf(0)); lctx.lineTo(LW,yOf(0)); lctx.stroke();
+  lctx.setLineDash([]);
+  // 扫描
+  const N = LW;
+  const vals = new Float64Array(N);
+  for (let px = 0; px < N; px++){
+    const r = S.rMin + (px + 0.5) / N * (S.rMax - S.rMin);
+    vals[px] = M.lyapunov(r, 700, 500);
+  }
+  for (let px = 0; px < N; px++){
+    const y = Math.max(2, Math.min(LH-2, yOf(vals[px])));
+    const y0 = yOf(0);
+    lctx.strokeStyle = vals[px] > 0 ? '#f6ad55' : '#5aa9e6';
+    lctx.beginPath(); lctx.moveTo(px+0.5, y0); lctx.lineTo(px+0.5, y); lctx.stroke();
+  }
+  // r∞ 参考线
+  const xr = (M.R_INF - S.rMin) / (S.rMax - S.rMin) * LW;
+  if (xr >= 0 && xr <= LW){
+    lctx.strokeStyle = 'rgba(246,173,85,.9)'; lctx.setLineDash([4,4]);
+    lctx.beginPath(); lctx.moveTo(xr,0); lctx.lineTo(xr,LH); lctx.stroke(); lctx.setLineDash([]);
+    lctx.fillStyle='#f6ad55'; lctx.font='11px ui-monospace,monospace'; lctx.fillText('r∞',xr+4,13);
+  }
+  // 当前 r 游标
+  const xc = (S.r - S.rMin) / (S.rMax - S.rMin) * LW;
+  if (xc >= 0 && xc <= LW){
+    lctx.strokeStyle='#4fd1c5'; lctx.lineWidth=1.5;
+    lctx.beginPath(); lctx.moveTo(xc,0); lctx.lineTo(xc,LH); lctx.stroke();
+  }
+  lctx.fillStyle='#8fa2b4'; lctx.font='11px ui-monospace,monospace';
+  lctx.fillText('λ>0 混沌',6,15); lctx.fillText('λ<0 周期',6,LH-6);
+}
+
+// ---------- 蛛网 ----------
+const cob = $('cob'), cctx = cob.getContext('2d');
+const CW = cob.width, CH = cob.height, PAD = 26;
+function cxy(x, y){
+  return [PAD + x*(CW-2*PAD), PAD + (1-y)*(CH-2*PAD)];
+}
+function drawCobweb(){
+  cctx.clearRect(0,0,CW,CH);
+  cctx.fillStyle='#0e151d'; cctx.fillRect(0,0,CW,CH);
+  // 网格
+  cctx.strokeStyle='rgba(35,50,65,.9)'; cctx.lineWidth=1;
+  for (let i=0;i<=8;i++){
+    const t=i/8;
+    let p=cxy(t,0), q=cxy(t,1); cctx.beginPath(); cctx.moveTo(p[0],p[1]); cctx.lineTo(q[0],q[1]); cctx.stroke();
+    p=cxy(0,t); q=cxy(1,t); cctx.beginPath(); cctx.moveTo(p[0],p[1]); cctx.lineTo(q[0],q[1]); cctx.stroke();
+  }
+  // y=x
+  cctx.strokeStyle='rgba(143,162,180,.7)';
+  let p=cxy(0,0), q=cxy(1,1); cctx.beginPath(); cctx.moveTo(p[0],p[1]); cctx.lineTo(q[0],q[1]); cctx.stroke();
+  // f(x)
+  cctx.strokeStyle='#4fd1c5'; cctx.lineWidth=2; cctx.beginPath();
+  for (let i=0;i<=220;i++){
+    const x=i/220, y=M.logisticStep(x,S.r), pt=cxy(x,y);
+    if (i===0) cctx.moveTo(pt[0],pt[1]); else cctx.lineTo(pt[0],pt[1]);
+  }
+  cctx.stroke();
+  // 蛛网阶梯
+  let x=0.2;
+  cctx.strokeStyle='rgba(246,173,85,.75)'; cctx.lineWidth=1; cctx.beginPath();
+  let pt=cxy(x,0); cctx.moveTo(pt[0],pt[1]);
+  const steps=Math.min(S.cobStep,180);
+  for (let i=0;i<steps;i++){
+    const y=M.logisticStep(x,S.r);
+    let a=cxy(x,x), b=cxy(x,y); cctx.lineTo(a[0],a[1]); cctx.lineTo(b[0],b[1]);
+    x=y;
+    a=cxy(x,x); cctx.lineTo(a[0],a[1]);
+  }
+  cctx.stroke();
+  // 终点
+  const ep=cxy(x,x);
+  cctx.fillStyle='#f6ad55'; cctx.beginPath(); cctx.arc(ep[0],ep[1],4,0,Math.PI*2); cctx.fill();
+  cctx.fillStyle='#8fa2b4'; cctx.font='11px ui-monospace,monospace';
+  cctx.fillText('r = '+S.r.toFixed(5), PAD, 15);
+  cctx.fillText('x₀ = 0.2', PAD, CH-8);
+}
+setInterval(() => {
+  if (!S.playing) return;
+  S.cobStep = (S.cobStep + 1) % 220;
+  drawCobweb();
+}, 55);
+
+// ---------- 读数 ----------
+function updateReadout(){
+  $('rVal').textContent = S.r.toFixed(5);
+  const per = M.detectPeriod(S.r);
+  $('periodOut').textContent = per ? ('周期 ' + per) : '混沌（精度内不重复）';
+  const lam = M.lyapunov(S.r, 1500, 1500);
+  $('lyapOut').textContent = lam.toFixed(6);
+  $('lyapNote').textContent = lam > 0 ? 'λ>0 → 轨道指数分离' : 'λ<0 → 收敛到周期轨道';
+  let x=0.2; const seq=[];
+  for (let i=0;i<500;i++) x=M.logisticStep(x,S.r);
+  for (let i=0;i<12;i++){ x=M.logisticStep(x,S.r); seq.push(x.toFixed(4)); }
+  $('orbitOut').textContent = '轨道（舍去 500 步后）：' + seq.join(' · ');
+}
+
+// ---------- 费根鲍姆面板 ----------
+let feigResult = null;
+function runFeigenbaum(){
+  $('feigBody').textContent = '';
+  $('remeasure').disabled = true; $('remeasure').textContent = '计算中…';
+  setTimeout(() => {
+    const res = M.computeFeigenbaum();
+    feigResult = res;
+    const tb = $('feigBody');
+    for (let i = 0; i < res.rs.length; i++){
+      const tr = document.createElement('tr');
+      const c1 = document.createElement('td'); c1.textContent = (i+1);
+      const c2 = document.createElement('td'); c2.textContent = '2^'+i+' → 2^'+(i+1);
+      const c3 = document.createElement('td'); c3.textContent = res.rs[i].toFixed(9);
+      const c4 = document.createElement('td'); c4.textContent = i===0 ? '—' : res.gaps[i-1].toExponential(3);
+      const c5 = document.createElement('td');
+      c5.textContent = i>=2 ? res.ratios[i-2].toFixed(6) : '—';
+      if (i>=2 && i===res.rs.length-1){ c5.className='hi'; c3.className='hi'; }
+      tr.appendChild(c1); tr.appendChild(c2); tr.appendChild(c3); tr.appendChild(c4); tr.appendChild(c5);
+      tb.appendChild(tr);
+    }
+    $('bdDelta').textContent = res.ratios[res.ratios.length-1].toFixed(6);
+    drawConvergence();
+    $('remeasure').disabled = false; $('remeasure').textContent = '重新实测 δ';
+  }, 30);
+}
+function drawConvergence(){
+  if (!feigResult) return;
+  const ctx=$('conv').getContext('2d'), W=$('conv').width, H=$('conv').height;
+  ctx.fillStyle='#0e151d'; ctx.fillRect(0,0,W,H);
+  const lo=4.5, hi=4.9;
+  const yOf=v=>H-24-(v-lo)/(hi-lo)*(H-40);
+  ctx.strokeStyle='rgba(143,162,180,.45)'; ctx.setLineDash([5,5]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,yOf(M.FEIGENBAUM_DELTA)); ctx.lineTo(W,yOf(M.FEIGENBAUM_DELTA)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#f6ad55'; ctx.font='11px ui-monospace,monospace';
+  ctx.fillText('理论 4.6692',6,yOf(M.FEIGENBAUM_DELTA)-6);
+  const r=feigResult.ratios;
+  r.forEach((v,i)=>{
+    const x=45+i*(W-70)/Math.max(1,r.length-1), y=yOf(v);
+    ctx.fillStyle='#4fd1c5'; ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#8fa2b4'; ctx.font='10px ui-monospace,monospace';
+    ctx.fillText('δ'+(i+1),x-9,H-7);
+    ctx.fillStyle='#4fd1c5'; ctx.fillText(v.toFixed(3),x-16,y-11);
+  });
+  ctx.fillStyle='#8fa2b4'; ctx.font='11px ui-monospace,monospace';
+  ctx.fillText('r∞ 估计 '+feigResult.rInfEst.toFixed(9)+'  ·  耗时 '+feigResult.elapsedMs.toFixed(0)+' ms',6,16);
+}
+
+// ---------- 事件绑定 ----------
+$('rSlider').addEventListener('input', e => {
+  S.r = parseFloat(e.target.value);
+  S.cobStep = 0;
+  updateReadout(); drawCobweb();
+});
+// λ 曲线扫描较重，松手（change）时再重算，避免拖动时卡顿
+$('rSlider').addEventListener('change', renderLyapunov);
+$('playBtn').addEventListener('click', e => {
+  S.playing = !S.playing;
+  e.target.textContent = S.playing ? '暂停蛛网' : '继续蛛网';
+  e.target.classList.toggle('on', S.playing);
+});
+$('rPills').addEventListener('click', e => {
+  const b = e.target.closest('button[data-r]'); if (!b) return;
+  S.r = parseFloat(b.dataset.r);
+  $('rSlider').value = S.r;
+  S.cobStep = 0; updateReadout(); drawCobweb(); renderLyapunov();
+});
+$('zoomPills').addEventListener('click', e => {
+  const b = e.target.closest('button[data-zoom]'); if (!b) return;
+  const [a,z] = b.dataset.zoom.split(',').map(Number);
+  S.rMin=a; S.rMax=z; renderBifurcation(); renderLyapunov();
+});
+$('remeasure').addEventListener('click', runFeigenbaum);
+
+// ---------- 启动 ----------
+updateReadout();
+drawCobweb();
+renderLyapunov();
+renderBifurcation();
+runFeigenbaum();
+</script>
+</body>
+</html>

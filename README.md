@@ -39,6 +39,7 @@
 | 伊辛磁畴 · 居里相变 | [ising-domains](ising-domains/) | Metropolis 伊辛模型：最大连通磁畴占比作序参量，居里点崩塌，外场破缺，升/降温磁滞 |
 | 渗流阈值 · 团簇贯通 | [percolation-threshold](percolation-threshold/) | 四连通团簇标记 + 位掩码触边判贯通：P_LR(p)=0.5 的交点落在 p_c，S 峰高 ∝ L^(γ/ν)，三尺寸曲线收敛 |
 | OFC 地震 · 自组织临界 | [ofc-earthquake](ofc-earthquake/) | 二维 OFC 弹簧-块体模型：滑动清零规则长出局域级联，古腾堡-里特 b 值与加载速率无关，能量账目闭合 |
+| 混沌之门 · 倍周期分岔 | [logistic-bifurcation](logistic-bifurcation/) | 分岔图 + 蛛网 + 李雅普诺夫指数；倍周期点现场求解，δ 实测逼近 4.6692，r∞ 可外推 |
 
 ---
 生成与维护：Hermes 夜间定时任务（每天 21:00 / 00:00 / 04:00 各开发一件）。
